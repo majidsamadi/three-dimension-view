@@ -1,0 +1,55 @@
+{
+  "name": "three-dimension-view",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first Vue SPA for phone-based house scanning and 3D viewing, built on the owner's Suha template.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm test && npm run build",
+    "native:android": "npm run build && node scripts/native-setup.mjs android",
+    "native:ios": "npm run build && node scripts/native-setup.mjs ios",
+    "native:sync": "cap sync",
+    "verify:source": "node scripts/verify-source.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@wisestay/phone-scanner": "file:packages/phone-scanner",
+    "bootstrap": "^5.3.8",
+    "idb": "^8.0.3",
+    "three": "^0.182.0",
+    "vue": "^3.5.27",
+    "vue-router": "^4.6.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22.19.0",
+    "@types/three": "^0.182.0",
+    "@types/webxr": "^0.5.24",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/test-utils": "^2.4.6",
+    "fake-indexeddb": "^6.2.4",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.2",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.1.8",
+    "xcode": "3.0.1"
+  }
+}

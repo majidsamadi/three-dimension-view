@@ -1,0 +1,14 @@
+apply plugin: 'com.android.library'
+android {
+    namespace 'com.wisestay.scanner'
+    compileSdk rootProject.ext.has('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig { minSdkVersion 26; targetSdkVersion 36 }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
+    testOptions { unitTests.returnDefaultValues = true }
+}
+repositories { google(); mavenCentral() }
+dependencies {
+    implementation project(':capacitor-android')
+    implementation 'com.google.ar:core:1.54.0'
+    testImplementation 'junit:junit:4.13.2'
+}

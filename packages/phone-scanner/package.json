@@ -1,0 +1,29 @@
+{
+  "name": "@wisestay/phone-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "On-device ARKit mesh and ARCore depth adapters for the WiseStay Vue SPA",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0 <9"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "Package.swift",
+    "PhoneScanner.podspec",
+    "ios/Sources/",
+    "android/src/main/",
+    "android/build.gradle",
+    "android/src/test/"
+  ]
+}
