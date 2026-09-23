@@ -1,4 +1,4 @@
-name: Materialize verified implementation source
+name: Apply hash-verified scanner source repairs
 on:
   push:
     branches: [feat/suha-local-phone-scanner]
@@ -17,53 +17,64 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Verify and unpack application source only
+      - name: Verify exact before/after source hashes and apply the bounded patch
         env:
           EXPECTED_HEAD: ${{ github.sha }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           python3 - <<'PY'
-          import base64, hashlib, io, json, lzma, pathlib, re, shutil, tarfile
+          import base64, hashlib, json, lzma, pathlib, shutil, subprocess
           root = pathlib.Path.cwd()
           manifest = json.loads((root/'.delivery/manifest.json').read_text())
-          assert manifest['format'] == 'wisestay.source.v1'
-          assert 0 < len(manifest['chunks']) <= 30
-          encoded = []
-          for chunk in manifest['chunks']:
-              assert re.fullmatch(r'payload-[0-9]{3}\.b64', chunk['file'])
-              text = (root/'.delivery'/chunk['file']).read_text().strip()
-              assert hashlib.sha256(text.encode()).hexdigest() == chunk['sha256'], chunk['file']
-              encoded.append(text)
-          compressed = base64.b64decode(''.join(encoded), validate=True)
+          assert manifest['format'] == 'wisestay.patch.v1'
+          assert 0 < len(manifest['files']) <= 100
+          paths = []
+          for entry in manifest['files']:
+              p = pathlib.PurePosixPath(entry['path'])
+              assert not p.is_absolute() and '..' not in p.parts
+              assert p.parts[0] not in ('.git', '.github', '.delivery')
+              assert p.suffix.lower() not in ('.zip','.ttf','.otf','.woff','.woff2','.docx','.w3d','.glb','.ply','.obj')
+              file = root.joinpath(*p.parts)
+              assert not file.is_symlink()
+              if entry['before'] is None: assert not file.exists(), str(p)
+              else: assert hashlib.sha256(file.read_bytes()).hexdigest() == entry['before'], str(p)
+              paths.append(str(p))
+          assert len(paths) == len(set(paths))
+          encoded = (root/'.delivery/patch.b64').read_text().strip()
+          assert len(encoded) < 1024*1024
+          compressed = base64.b64decode(encoded, validate=True)
           assert hashlib.sha256(compressed).hexdigest() == manifest['sha256']
           decoder = lzma.LZMADecompressor(memlimit=128*1024*1024)
-          unpacked = decoder.decompress(compressed, max_length=4*1024*1024)
-          assert decoder.eof and not decoder.unused_data and len(unpacked) < 4*1024*1024
-          with tarfile.open(fileobj=io.BytesIO(unpacked)) as archive:
-              members = archive.getmembers()
-              assert len(members) < 300
-              for member in members:
-                  p = pathlib.PurePosixPath(member.name)
-                  assert member.isfile() and not p.is_absolute() and '..' not in p.parts
-                  assert p.parts[0] not in ('.git', '.github', '.delivery')
-                  assert p.suffix.lower() not in ('.zip','.ttf','.otf','.woff','.woff2','.docx','.w3d','.glb','.ply','.obj')
-                  destination = root.joinpath(*p.parts)
-                  destination.parent.mkdir(parents=True, exist_ok=True)
-                  destination.write_bytes(archive.extractfile(member).read())
+          patch = decoder.decompress(compressed, max_length=4*1024*1024)
+          assert decoder.eof and not decoder.unused_data and len(patch) < 4*1024*1024
+          subprocess.run(['git','apply','--check','--index'], input=patch, check=True)
+          subprocess.run(['git','apply','--index'], input=patch, check=True)
+          changed = subprocess.check_output(['git','diff','--cached','--name-only','-z']).decode().rstrip('\0').split('\0')
+          assert sorted(changed) == sorted(paths), changed
+          for entry in manifest['files']:
+              assert hashlib.sha256((root/entry['path']).read_bytes()).hexdigest() == entry['after'], entry['path']
           shutil.rmtree(root/'.delivery')
-          print(f'Verified and materialized {len(members)} source files; no purchased archive, private documents, scans or font files included.')
+          print(f'Applied {len(paths)} reviewed source repairs with exact before/after hashes.')
           PY
-      - name: Resolve and preserve dependency lock without running package scripts
+      - name: Resolve the reviewed dependency update without package scripts
         run: npm install --package-lock-only --ignore-scripts --no-fund
-      - name: Commit normal source files with a non-forced push
-        env:
-          DELIVERY_BRANCH: feat/suha-local-phone-scanner
+      - name: Preserve source and lockfile with a non-forced commit
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'feat: implement Suha Vue SPA and local ARKit ARCore WebXR scanning'
-          git push origin "HEAD:refs/heads/$DELIVERY_BRANCH"
-          echo "Source materialized and lockfile committed at $(git rev-parse HEAD). Build and physical-device qualification are separate gates." >> "$GITHUB_STEP_SUMMARY"
+          git commit -m 'fix: repair scanner builds and model tests; update vulnerable development tooling'
+          git push origin HEAD:refs/heads/feat/suha-local-phone-scanner
+          echo "Hash-verified source committed at $(git rev-parse HEAD). Validation and physical qualification remain separate." >> "$GITHUB_STEP_SUMMARY"
+      - name: Prepare reproducible Linux test dependencies
+        run: |
+          npm ci
+          tar --exclude='*.ttf' --exclude='*.otf' --exclude='*.woff' --exclude='*.woff2' -czf verification-dependencies.tar.gz node_modules package-lock.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: verification-dependencies
+          path: verification-dependencies.tar.gz
+          if-no-files-found: error
+          retention-days: 1

@@ -46,6 +46,7 @@ jobs:
       - run: npm ci
       - run: npm run verify:source
       - run: npm run typecheck
+      - run: npm run test:scripts
       - run: npm test -- --reporter=default --reporter=json --outputFile=unit-test-results.json
       - run: npm run build
       - run: npx playwright install --with-deps chromium
@@ -115,6 +116,12 @@ jobs:
           xcodebuild -version
       - run: npm ci
       - run: npm run native:ios
+      - name: Verify native setup is idempotent
+        run: |
+          shasum -a 256 ios/App/App.xcodeproj/project.pbxproj > /tmp/xcode-before.txt
+          node scripts/native-setup.mjs ios
+          shasum -a 256 ios/App/App.xcodeproj/project.pbxproj > /tmp/xcode-after.txt
+          diff /tmp/xcode-before.txt /tmp/xcode-after.txt
       - name: Compile the complete iOS simulator application without signing
         run: |
           set -o pipefail
