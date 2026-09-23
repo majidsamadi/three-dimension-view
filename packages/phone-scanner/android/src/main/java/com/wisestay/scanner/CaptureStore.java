@@ -11,7 +11,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import java.io.FileInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.UUID;
 
 /** Snapshots stay in app-private, no-backup storage. No external-storage permission. */
@@ -39,10 +40,22 @@ final class CaptureStore {
     JSArray recoveries() throws Exception {
         JSArray results = new JSArray(); File[] files = directory.listFiles((dir, name) -> name.endsWith(".json")); if (files == null) return results;
         for (File item : files) {
-            try { if (item.length() > 32768) continue; JSObject metadata = new JSObject(Files.readString(item.toPath())); String id = metadata.getString("sessionId"); try (RandomAccessFile geometry = new RandomAccessFile(file(id,"mesh"), "r")) { int[] counts = header(geometry); metadata.put("vertices", counts[0]); metadata.put("indices", counts[1]); } results.put(metadata); }
+            try { if (item.length() > 32768) continue; JSObject metadata = new JSObject(readMetadata(item)); String id = metadata.getString("sessionId"); try (RandomAccessFile geometry = new RandomAccessFile(file(id,"mesh"), "r")) { int[] counts = header(geometry); metadata.put("vertices", counts[0]); metadata.put("indices", counts[1]); } results.put(metadata); }
             catch (Exception ignored) { /* Do not advertise missing/corrupt data as a recoverable capture. Other files remain available. */ }
         }
         return results;
+    }
+    /** Bounded UTF-8 read using Android API-26-compatible APIs, including AtomicFile crash recovery. */
+    private String readMetadata(File item) throws IOException {
+        try (FileInputStream input = new AtomicFile(item).openRead(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] chunk = new byte[4096];
+            int count;
+            while ((count = input.read(chunk)) != -1) {
+                if (output.size() + count > 32768) throw new IOException("Capture metadata exceeds its size limit.");
+                output.write(chunk, 0, count);
+            }
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        }
     }
     private int[] header(RandomAccessFile file) throws IOException {
         if (file.length() < 20 || file.length() > 64L * 1024 * 1024) throw new IOException("Invalid scan snapshot size.");

@@ -7,7 +7,7 @@ for(const name of Object.keys({...pkg.dependencies,...pkg.devDependencies})) ass
 assert(pkg.dependencies.vue && pkg.dependencies['vue-router'], 'Vue SPA dependencies are required')
 const suha=fs.readFileSync('src/assets/suha.css','utf8')
 assert(suha.includes('Designing World'), 'Preserve Suha attribution')
-assert(!/@import\s+url|fonts\.googleapis|@font-face/.test(suha), 'No remotely loaded or bundled font files')
+assert(!/@import\s+url|fonts\.googleapis|@font-face|display=swap|&amp;/.test(suha), 'No remotely loaded or bundled font files')
 assert(fs.readFileSync('src/router.ts','utf8').includes('createWebHistory'), 'SPA router is required')
 for(const directory of ['src','public','packages','native']) for(const file of fs.readdirSync(directory,{recursive:true})) {
  const full=path.join(directory,file); if(!fs.statSync(full).isFile())continue

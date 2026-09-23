@@ -15,11 +15,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run typecheck && npm test && npm run build",
+    "check": "npm run verify:source && npm run typecheck && npm run test:scripts && npm test && npm run build",
     "native:android": "npm run build && node scripts/native-setup.mjs android",
     "native:ios": "npm run build && node scripts/native-setup.mjs ios",
     "native:sync": "cap sync",
-    "verify:source": "node scripts/verify-source.mjs"
+    "verify:source": "node scripts/verify-source.mjs",
+    "test:scripts": "node --test tests/scripts/*.test.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.0.0",
@@ -48,8 +49,13 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.2",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^3.2.4",
+    "vitest": "4.1.11",
     "vue-tsc": "^3.1.8",
     "xcode": "3.0.1"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
   }
 }

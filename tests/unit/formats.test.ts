@@ -1,3 +1,6 @@
+// @vitest-environment node
+// File/Blob buffers and the Three.js parser must share the same ArrayBuffer realm.
+// The matching real-browser PLY/GLB round trips are covered by Playwright.
 import { describe, expect, it } from 'vitest'
 import { importModel, validateGLB, exportModel } from '@/services/models'
 import { floorplanSVG } from '@/services/floorplan'

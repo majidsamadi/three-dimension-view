@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
+import { ensurePrivacyManifest } from './xcode-privacy.mjs'
 const require = createRequire(import.meta.url)
 const platform = process.argv[2]
 if (!['android', 'ios'].includes(platform)) throw new Error('Usage: node scripts/native-setup.mjs android|ios')
@@ -34,9 +35,6 @@ if (platform === 'android') {
  if (!fs.existsSync(privacyPath)) fs.copyFileSync('native/PrivacyInfo.xcprivacy', privacyPath)
  const xcode = require('xcode'), file = 'ios/App/App.xcodeproj/project.pbxproj', project = xcode.project(file)
  project.parseSync()
- if (!fs.readFileSync(file, 'utf8').includes('PrivacyInfo.xcprivacy')) {
-  project.addResourceFile('App/PrivacyInfo.xcprivacy', { target: project.getFirstTarget().uuid }, project.getFirstProject().firstProject.mainGroup)
-  fs.writeFileSync(file, project.writeSync())
- }
+ if (ensurePrivacyManifest(project)) fs.writeFileSync(file, project.writeSync())
  console.log('iOS SPM shell prepared with camera purpose text and privacy manifest. Open ios/App/App.xcodeproj in Xcode 26+. Device signing remains the owner’s responsibility.')
 }

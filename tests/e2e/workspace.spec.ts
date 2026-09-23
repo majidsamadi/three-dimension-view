@@ -68,3 +68,40 @@ test('previously loaded SPA and saved records open offline',async({page,context}
  await page.reload();await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true)
  await context.setOffline(true);await page.goto(url);await expect(page.getByRole('heading',{name:'Offline apartment',exact:true})).toBeVisible();await context.setOffline(false)
 })
+
+for (const format of ['ply', 'glb', 'obj'] as const) {
+ test(`exports and reimports ${format.toUpperCase()} geometry in a real browser`, async ({page}) => {
+  const source = await sample(page)
+  await page.goto(`${source}/export`)
+  await page.locator(`input[name="export-format"][value="${format}"]`).check()
+  await page.locator('.consent-check input').check()
+  const pending = page.waitForEvent('download')
+  await page.getByRole('button', {name:'Export file', exact:true}).click()
+  const download = await pending
+  const path = await download.path()
+  expect(path).not.toBeNull()
+  const fs = await import('node:fs/promises')
+  const bytes = await fs.readFile(path!)
+  expect(bytes.byteLength).toBeGreaterThan(100)
+  const destination = await organize(page, `${format.toUpperCase()} round trip`)
+  await page.goto(`${destination}/import`)
+  await page.locator('input[type=file]').setInputFiles({name:`round-trip.${format}`,mimeType:'application/octet-stream',buffer:bytes})
+  await page.getByRole('button', {name:'Import to this device'}).click()
+  await expect(page).toHaveURL(destination)
+  await expect(page.locator('.scene-row')).toHaveCount(1)
+  await expect(page.locator('.scene-row')).toContainText('Imported model')
+  await expect(page.locator('.scene-viewer canvas').first()).toBeVisible()
+  await page.reload()
+  await expect(page.locator('.scene-row')).toContainText('round-trip')
+ })
+}
+test('imports an ASCII PLY point cloud without inventing triangles', async ({page}) => {
+ const destination = await organize(page, 'Point-cloud import')
+ await page.goto(`${destination}/import`)
+ const ply = 'ply\nformat ascii 1.0\nelement vertex 3\nproperty float x\nproperty float y\nproperty float z\nend_header\n0 0 0\n1 0 0\n0 1 0\n'
+ await page.locator('input[type=file]').setInputFiles({name:'points.ply',mimeType:'application/octet-stream',buffer:Buffer.from(ply)})
+ await page.getByRole('button', {name:'Import to this device'}).click()
+ await expect(page).toHaveURL(destination)
+ await expect(page.locator('.scene-row')).toContainText('3 vertices · 0 triangles')
+ await expect(page.locator('.scene-viewer canvas').first()).toBeVisible()
+})
