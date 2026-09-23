@@ -1,0 +1,2 @@
+<script setup lang="ts">import EmptyState from '@/components/EmptyState.vue'; import AppIcon from '@/components/AppIcon.vue'</script>
+<template><div class="container"><EmptyState heading-tag="h1" title="A space we couldn’t find." message="This page does not exist. Your saved projects are still in the local library." icon="map"><RouterLink to="/library" class="btn btn-primary"><AppIcon name="library"/>Back to your spaces</RouterLink></EmptyState></div></template>

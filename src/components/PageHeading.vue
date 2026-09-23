@@ -1,0 +1,2 @@
+<script setup lang="ts">import AppIcon from './AppIcon.vue'; defineProps<{ title: string; eyebrow?: string; subtitle?: string; back?: string }>()</script>
+<template><div class="page-heading"><div><RouterLink v-if="back" :to="back" class="back-link"><AppIcon name="back" :size="18"/>Back</RouterLink><div v-if="eyebrow" class="eyebrow">{{ eyebrow }}</div><h1>{{ title }}</h1><p v-if="subtitle">{{ subtitle }}</p></div><div class="heading-action"><slot/></div></div></template>

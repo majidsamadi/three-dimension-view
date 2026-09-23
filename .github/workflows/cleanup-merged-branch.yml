@@ -1,0 +1,28 @@
+name: Remove safely merged implementation branch
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    if: github.repository == 'majidsamadi/three-dimension-view'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Delete only the named branch after proving ancestry in main
+        env:
+          MERGED_BRANCH: feat/suha-local-phone-scanner
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          REF="refs/heads/$MERGED_BRANCH"
+          HEAD=$(git ls-remote --heads origin "$REF" | cut -f1)
+          if [ -z "$HEAD" ]; then echo 'Implementation branch is already absent.' >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git fetch origin "$REF"
+          git merge-base --is-ancestor "$HEAD" origin/main
+          git push --force-with-lease="$REF:$HEAD" origin ":$REF"
+          echo "Deleted $MERGED_BRANCH at $HEAD; its complete history is preserved by $(git rev-parse origin/main)." >> "$GITHUB_STEP_SUMMARY"

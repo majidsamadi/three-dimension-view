@@ -1,0 +1,136 @@
+name: Verify Vue SPA and native scanners
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    name: Source provenance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Archive only tracked application source
+        run: |
+          git archive --format=tar.gz --output=source.tar.gz HEAD
+          git rev-parse HEAD > SOURCE_COMMIT.txt
+          sha256sum source.tar.gz > SOURCE_SHA256.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: application-source-${{ github.sha }}
+          path: |
+            source.tar.gz
+            SOURCE_COMMIT.txt
+            SOURCE_SHA256.txt
+          if-no-files-found: error
+          retention-days: 14
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:source
+      - run: npm run typecheck
+      - run: npm run test:scripts
+      - run: npm test -- --reporter=default --reporter=json --outputFile=unit-test-results.json
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Gate dependency vulnerabilities and retain the report
+        if: always()
+        run: npm audit --audit-level=moderate --json > dependency-audit.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: web-verification-${{ github.sha }}
+          path: |
+            dist/
+            playwright-report/
+            test-results/
+            unit-test-results.json
+            dependency-audit.json
+          retention-days: 14
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+      - run: npm ci
+      - run: npm run native:android
+      - name: Compile application and run native fusion unit tests
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug testDebugUnitTest 2>&1 | tee ../android-build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: android-debug-${{ github.sha }}
+          path: |
+            android-build.log
+            android/app/build/outputs/apk/debug/*.apk
+            packages/phone-scanner/android/build/reports/tests/
+            packages/phone-scanner/android/build/test-results/
+            android/app/build/reports/tests/
+          retention-days: 14
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Select installed Xcode 26 or newer
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' -type d | sort -V | tail -1)
+          if [ -n "$XCODE" ]; then sudo xcode-select -s "$XCODE/Contents/Developer"; fi
+          xcodebuild -version
+      - run: npm ci
+      - run: npm run native:ios
+      - name: Verify native setup is idempotent
+        run: |
+          shasum -a 256 ios/App/App.xcodeproj/project.pbxproj > /tmp/xcode-before.txt
+          node scripts/native-setup.mjs ios
+          shasum -a 256 ios/App/App.xcodeproj/project.pbxproj > /tmp/xcode-after.txt
+          diff /tmp/xcode-before.txt /tmp/xcode-after.txt
+      - name: Compile the complete iOS simulator application without signing
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ios-build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ios-build-evidence-${{ github.sha }}
+          path: |
+            ios-build.log
+            ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app/
+          retention-days: 14

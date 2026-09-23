@@ -1,0 +1,2 @@
+<script setup lang="ts">import AppIcon from './AppIcon.vue'; withDefaults(defineProps<{ kind?: 'info'|'error'|'warning'|'success'; title?: string }>(), { kind: 'info' })</script>
+<template><div class="notice-box" :class="kind" :role="kind === 'error' ? 'alert' : 'note'"><AppIcon :name="kind === 'error' || kind === 'warning' ? 'warning' : kind === 'success' ? 'check' : 'info'"/><div><strong v-if="title">{{ title }}</strong><slot/></div></div></template>
