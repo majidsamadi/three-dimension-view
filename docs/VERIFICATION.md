@@ -2,14 +2,14 @@
 
 ## Reproduce the automated acceptance gates
 
-Use the committed lockfile. GitHub Actions runs Node 24 on Ubuntu 24.04 and Xcode 26 on macOS 15. The local verification environment used Linux x86-64 and Node 22.16.0 with dependencies reproduced from that same lockfile.
+Use the committed lockfile. GitHub Actions runs Node 24 on Ubuntu 24.04 and Xcode 26 on macOS 15. The original local verification used Linux x86-64 and Node 22.16.0 with dependencies reproduced from that same lockfile. Final camera-lifecycle and recovery fixes are verified by the exact candidate's hosted Actions run; do not describe those hosted results as local execution.
 
 | Gate | Command / coverage |
 | --- | --- |
 | Source provenance and policy | `npm run verify:source`: Vue SPA, actual attributed Suha styles, no fonts, purchased archive, private documents or customer scan redistribution |
 | Strict Vue / TypeScript | `npm run typecheck` |
 | Native build graph regression | `npm run test:scripts`: five cases for Xcode privacy-resource registration, idempotency, signing preservation, malformed graph rejection and matching the installed Capacitor CLI's SPM product name |
-| Unit / component verification | `npm test`: 80 cases for geometry, depth reconstruction, archive encryption/tampering, model formats, IndexedDB revisions, confirmation accessibility and camera lifecycle |
+| Unit / component verification | `npm test`: 92 cases for geometry, depth reconstruction, archive encryption/tampering, model formats, IndexedDB revisions, confirmation accessibility, camera lifecycle and recovery failures |
 | Production web build | `npm run build`: static Vue SPA plus offline service worker |
 | Browser end-to-end | `npm run test:e2e`: 24 cases, 12 each in desktop Chromium and mobile-viewport Chromium |
 | Dependency security | `npm audit --audit-level=moderate --json`: advisory failures block the web job; the report is retained |
@@ -18,7 +18,7 @@ Use the committed lockfile. GitHub Actions runs Node 24 on Ubuntu 24.04 and Xcod
 
 Browser cases exercise actual rendered views, IndexedDB persistence, editing, safe deletion, floor-plan SVG export, W3D export/import, invalid archive refusal, offline reload, supported-format round trips, and honest unsupported capture states. GLB/PLY/OBJ round trips use actual exported bytes, not substituted geometry. ASCII PLY verifies a three-point cloud remains three points with zero invented triangles. Mobile viewport emulation is not a physical phone sensor test.
 
-The lifecycle component test uses an explicitly simulated native bridge. It verifies navigation cannot race camera startup and unexpected unmount requests native stop while removing the Vue camera overlay. It is not ARKit/ARCore hardware evidence.
+The camera lifecycle suite contains nine component cases using explicitly simulated native/browser bridges and four cases running the actual WebXR engine against a simulated XR runtime and renderer. It covers delayed listener registration, delayed camera permission, unexpected unmount, rejected cleanup, unsuccessful finalization, unavailable recovery storage, retained native recovery, reload guards, and cancellation during each asynchronous WebXR startup boundary. These tests prove the specified application control flow, not ARKit/ARCore sensor quality or physical-phone behaviour.
 
 ## Exact source and evidence
 
@@ -45,6 +45,12 @@ The remediation retains the original implementation and assertions:
 7. Vitest 4.1.11 and the scoped CommonJS-compatible UUID 11.1.1 override remediate the reported development-tool advisories without replacing the app framework or dropping tests.
 
 The temporary hash-verified source-delivery workflow was removed after its patches were materialized as normal tracked files. Only normal verification and ancestry-checked branch cleanup remain.
+
+## Final capture hardening
+
+A camera permission request or native listener registration can finish after its Vue view is destroyed. The capture view now removes late listeners without opening the camera, stops a late-started native session, and clears its overlay even when another cleanup operation rejects. WebXR startup checks cancellation after session acquisition, renderer setup and reference-space acquisition; a stopped scanner cannot install a new render loop or be reused.
+
+Navigation now distinguishes a genuinely stored recovery from an in-memory-only result. Failed finalization or a failed browser recovery write prevents automatic departure after stopping. Leaving an unsaved in-memory-only review requires a separate explicit data-loss confirmation. Reload is guarded while capture or an unprotected result is active. A native recovery remains usable when writing an additional browser recovery copy fails; that failure does not discard the native copy or falsely label it absent.
 
 ## Physical and product boundaries
 
