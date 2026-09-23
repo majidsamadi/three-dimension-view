@@ -51,9 +51,9 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - name: Dependency report
+      - name: Gate dependency vulnerabilities and retain the report
         if: always()
-        run: npm audit --json > dependency-audit.json || true
+        run: npm audit --audit-level=moderate --json > dependency-audit.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

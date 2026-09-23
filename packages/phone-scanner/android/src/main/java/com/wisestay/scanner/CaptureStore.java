@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.io.FileInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.UUID;
+import org.json.JSONException;
 
 /** Snapshots stay in app-private, no-backup storage. No external-storage permission. */
 final class CaptureStore {
@@ -73,6 +74,22 @@ final class CaptureStore {
             JSObject result = new JSObject(); result.put("positions",positions); result.put("colors",colors); result.put("indices",indices); return result;
         }
     }
-    private JSArray floats(RandomAccessFile file,long offset,int length) throws IOException { byte[] bytes=new byte[length*4]; file.seek(offset); file.readFully(bytes); ByteBuffer b=ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN); JSArray result=new JSArray(); while(b.hasRemaining()) result.put(b.getFloat()); return result; }
+    private JSArray floats(RandomAccessFile file, long offset, int length) throws IOException {
+        byte[] bytes = new byte[length * 4];
+        file.seek(offset);
+        file.readFully(bytes);
+        ByteBuffer data = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        JSArray result = new JSArray();
+        try {
+            while (data.hasRemaining()) {
+                float value = data.getFloat();
+                if (!Float.isFinite(value)) throw new IOException("The saved scan contains invalid numeric data.");
+                result.put((double) value);
+            }
+        } catch (JSONException error) {
+            throw new IOException("The saved scan cannot be represented safely.", error);
+        }
+        return result;
+    }
     void discard(String id) throws IOException { for(String suffix: new String[]{"json","mesh"}) { File path=file(id,suffix); if(path.exists() && !path.delete()) throw new IOException("The recovery copy could not be removed."); new AtomicFile(path).delete(); } }
 }
