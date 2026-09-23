@@ -1,0 +1,18 @@
+{
+  "format": "wisestay.source.v1",
+  "sha256": "de771e7e81e3e8d74b1d1bef224749bfc33140f29ac158c03ce9869698e23aa8",
+  "chunks": [
+    {"file":"payload-000.b64","sha256":"47894875a1637166dea7dddfa3a113c2f85ca29a187d42939b1f7af7d2df8d17"},
+    {"file":"payload-001.b64","sha256":"7bb2a7483c9569834d2b3d61b4878bc2f6e9b6efa88fc1e2eab0ed9e5efe7c29"},
+    {"file":"payload-002.b64","sha256":"17761e07f65c533afaf3ab912a3cba1d6a4dd4db510870710af0e09c6b728125"},
+    {"file":"payload-003.b64","sha256":"bd62610c7be99c58c8c44da33da5567654708d646002ba39b5d1ff17a06c44a3"},
+    {"file":"payload-004.b64","sha256":"c76e26bd2dd387d049cfe84ccdb2ee29180dd6f50e5cf3f6681d6761e3c4a515"},
+    {"file":"payload-005.b64","sha256":"9bb3b2a5000d2a2ea10c34ff8160aeea12d002617359b3687f469382e16f3aaf"},
+    {"file":"payload-006.b64","sha256":"228b71916c2d1ceaae09290dc6a6302c954d4cc3279c411d2f80761d463d009d"},
+    {"file":"payload-007.b64","sha256":"2027f6f0204e4b64a6ee1b0343bd5e29c1c03f05e468e36b47c6b568a321058c"},
+    {"file":"payload-008.b64","sha256":"b14bf899c23b3d0aedd330281ed20682fbc4e37869d5033dc552673a54566cce"},
+    {"file":"payload-009.b64","sha256":"d6130c802383011336ece6c8205429cce138a4eae0558f36ce08486cdf800e86"},
+    {"file":"payload-010.b64","sha256":"3e19c9d4ecb608e545739876e33706f252d6a29ef29f59e9c4d705ec2472301d"},
+    {"file":"payload-011.b64","sha256":"7b09cb56c63348b38eae921a4a38b4b26eac4f19995b2fde712819c1d747db69"}
+  ]
+}
