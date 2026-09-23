@@ -10,6 +10,28 @@ concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  source:
+    name: Source provenance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Archive only tracked application source
+        run: |
+          git archive --format=tar.gz --output=source.tar.gz HEAD
+          git rev-parse HEAD > SOURCE_COMMIT.txt
+          sha256sum source.tar.gz > SOURCE_SHA256.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: application-source-${{ github.sha }}
+          path: |
+            source.tar.gz
+            SOURCE_COMMIT.txt
+            SOURCE_SHA256.txt
+          if-no-files-found: error
+          retention-days: 14
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -24,7 +46,7 @@ jobs:
       - run: npm ci
       - run: npm run verify:source
       - run: npm run typecheck
-      - run: npm test
+      - run: npm test -- --reporter=default --reporter=json --outputFile=unit-test-results.json
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
@@ -39,6 +61,7 @@ jobs:
             dist/
             playwright-report/
             test-results/
+            unit-test-results.json
             dependency-audit.json
           retention-days: 14
   android:
@@ -60,14 +83,18 @@ jobs:
       - run: npm run native:android
       - name: Compile application and run native fusion unit tests
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug testDebugUnitTest 2>&1 | tee ../android-build.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: android-debug-${{ github.sha }}
           path: |
+            android-build.log
             android/app/build/outputs/apk/debug/*.apk
             packages/phone-scanner/android/build/reports/tests/
+            packages/phone-scanner/android/build/test-results/
             android/app/build/reports/tests/
           retention-days: 14
   ios:
