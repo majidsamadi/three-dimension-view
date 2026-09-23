@@ -11,17 +11,25 @@ export class BrowserDepthScanner {
  constructor(private sessionId: string, quality: 'balanced'|'detail', private onProgress: (progress: ScanProgress) => void, private onEnd: () => void) { this.fusion = new VoxelFusion(quality === 'detail' ? .015 : .03, quality === 'detail' ? 200_000 : 100_000, quality === 'detail' ? 300_000 : 150_000) }
  async start(canvas: HTMLCanvasElement, overlay: HTMLElement): Promise<void> {
   if (!navigator.xr) throw new AppError('This browser does not expose WebXR. Use the native app on a supported phone, or import an existing model.', 'UNSUPPORTED')
+  this.assertStartActive()
   this.startTime = performance.now(); this.lastDepth = this.startTime
   try {
    // Must remain directly attached to the user's click; browsers require activation.
    this.session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local', 'depth-sensing', 'dom-overlay'], optionalFeatures: [], domOverlay: { root: overlay }, depthSensing: { usagePreference: ['cpu-optimized'], dataFormatPreference: ['float32', 'luminance-alpha'] } } as XRSessionInit)
+   this.assertStartActive()
    if ((this.session as XRSession & { depthUsage?: string }).depthUsage !== 'cpu-optimized') throw new AppError('This browser cannot provide CPU depth data. No 3D capture was started.', 'UNSUPPORTED_DEPTH')
    this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false }); this.renderer.xr.enabled = true; this.renderer.xr.setReferenceSpaceType('local'); this.renderer.setSize(window.innerWidth, window.innerHeight); await this.renderer.xr.setSession(this.session)
+   this.assertStartActive()
    this.space = await this.session.requestReferenceSpace('local')
+   this.assertStartActive()
    this.session.addEventListener('end', () => { this.dispose(); if (!this.ending) this.onEnd() }, { once: true })
    this.session.addEventListener('visibilitychange', () => { if (this.session?.visibilityState !== 'visible') this.paused = true })
    this.renderer.setAnimationLoop((time, frame) => { try { this.tick(time, frame) } catch { this.paused = true; this.onProgress({ sessionId: this.sessionId, vertices: this.fusion.vertexCount, triangles: this.fusion.triangleCount, frames: this.frames, elapsedMs: performance.now() - this.startTime, tracking: 'Depth update unavailable', paused: true, budgetReached: this.fusion.capacityReached, preview: Array.from(this.fusion.preview(2000).positions), message: 'Depth tracking was interrupted. Stop to review the geometry already captured, or deliberately resume.' }) } })
   } catch (e) { await this.stop(); throw e }
+ }
+ /** stop() can run while any startup await is pending, including the permission dialog. */
+ private assertStartActive(): void {
+  if (this.ending) throw new AppError('Capture startup was cancelled because the view was closed.', 'CAPTURE_CANCELLED')
  }
  private tick(time: number, frame?: XRFrame): void {
   if (!frame || !this.renderer || !this.space) return
