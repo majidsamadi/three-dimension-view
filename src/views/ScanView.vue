@@ -17,7 +17,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import NoticeBox from '@/components/NoticeBox.vue'
 import SceneViewer from '@/components/SceneViewer.vue'
 const route = useRoute(), router = useRouter(), projectId = computed(() => String(route.params.id)), project = shallowRef<Project>(), capabilities = shallowRef<Capabilities>(), state = ref<'setup'|'starting'|'capturing'|'processing'|'review'>('setup'), consent = ref(false), error = ref(''), name = ref(''), selectedEngine = ref<'native'|'webxr'>('native'), progress = shallowRef<ScanProgress>(), preview = shallowRef<RenderScene[]>([]), finalGeometry = shallowRef<GeometryData>(), transfer = ref(0), busy = ref(false), overlay = ref<HTMLElement>(), xrCanvas = ref<HTMLCanvasElement>(), photoInput = ref<HTMLInputElement>(), recovery = shallowRef<ScanDraft[]>([]), nativeRecovery = shallowRef<NativeResult[]>([])
-let nativeListener: PluginListenerHandle | undefined, browser: BrowserDepthScanner | undefined, sessionId = '', capturedAt = '', elapsed = 0, source: CaptureSource = 'webxr-depth', warnings: string[] = [], checkpointAt = 0, checkpointPromise: Promise<void> | undefined, dead = false, saved = false
+let nativeListener: PluginListenerHandle | undefined, browser: BrowserDepthScanner | undefined, sessionId = '', capturedAt = '', elapsed = 0, source: CaptureSource = 'webxr-depth', warnings: string[] = [], checkpointAt = 0, checkpointPromise: Promise<void> | undefined, dead = false, saved = false, recoveryStored = false
 const supportsNative = computed(() => capabilities.value?.native?.available && capabilities.value.native.support !== 'unsupported')
 const canStart = computed(() => !!project.value && consent.value && !busy.value && (selectedEngine.value === 'native' ? supportsNative.value : capabilities.value?.xr))
 const live = computed(() => state.value === 'capturing' || state.value === 'starting')
@@ -38,36 +38,62 @@ function update(p: ScanProgress): void {
 async function start(): Promise<void> {
  if (!canStart.value || !project.value) return
  if (project.value.scenes.length >= LIMITS.scenes) { error.value = 'This space has reached its 64-section limit. Create another space.'; return }
- error.value = ''; saved = false; sessionId = crypto.randomUUID(); capturedAt = new Date().toISOString(); elapsed = 0; warnings = []; progress.value = undefined; preview.value = []; finalGeometry.value = undefined; state.value = 'starting'
+ error.value = ''; saved = false; recoveryStored = false; sessionId = crypto.randomUUID(); capturedAt = new Date().toISOString(); elapsed = 0; warnings = []; progress.value = undefined; preview.value = []; finalGeometry.value = undefined; state.value = 'starting'
  try {
   if (selectedEngine.value === 'native') {
-   source = capabilities.value!.native!.source; nativeListener = await PhoneScanner.addListener('progress', update); document.body.classList.add('native-capture'); document.documentElement.classList.add('native-capture'); await PhoneScanner.start({ sessionId, projectId: projectId.value, quality: settings.quality })
+   source = capabilities.value!.native!.source
+   const listener = await PhoneScanner.addListener('progress', update)
+   // A parent/error boundary can unmount while listener registration is pending.
+   if (dead) { await listener.remove(); return }
+   nativeListener = listener
+   document.body.classList.add('native-capture'); document.documentElement.classList.add('native-capture')
+   await PhoneScanner.start({ sessionId, projectId: projectId.value, quality: settings.quality })
   } else {
    source = 'webxr-depth'; warnings = ['Browser depth geometry has a uniform display colour, not a photographic texture.']
    // Elements are mounted before the click; no activation-losing asynchronous setup precedes requestSession.
    browser = new BrowserDepthScanner(sessionId, settings.quality, update, () => { if (!dead && state.value === 'capturing') void finish() })
    await browser.start(xrCanvas.value!, overlay.value!)
   }
+  // Native permission and WebXR session requests may resolve after this view disappears.
+  // Never publish a live state or leave a camera running behind the replacement view.
+  if (dead) { if (selectedEngine.value === 'native') await stopAbandonedNative(); await release(); return }
   state.value = 'capturing'
- } catch (e) { error.value = errorMessage(e); await release(); state.value = 'setup' }
+ } catch (e) { if (!dead) error.value = errorMessage(e); await release(); if (!dead) state.value = 'setup' }
 }
 async function pause(): Promise<void> { try { if (progress.value?.paused) { if (browser) browser.resume(); else await PhoneScanner.resume() } else { if (browser) browser.pause(); else await PhoneScanner.pause() } } catch (e) { toast(errorMessage(e), 'error') } }
-async function release(): Promise<void> { await browser?.stop(); browser = undefined; await nativeListener?.remove(); nativeListener = undefined; document.body.classList.remove('native-capture'); document.documentElement.classList.remove('native-capture') }
+async function stopAbandonedNative(): Promise<void> {
+ try { await PhoneScanner.stop() }
+ catch { toast('Native camera cleanup could not be confirmed. Close the app and check unfinished captures before starting again.', 'warning') }
+}
+async function release(): Promise<void> {
+ const engine = browser, listener = nativeListener
+ browser = undefined; nativeListener = undefined
+ // Clear the visual overlay even when an engine or plugin cleanup operation rejects.
+ document.body.classList.remove('native-capture'); document.documentElement.classList.remove('native-capture')
+ const results = await Promise.allSettled([
+  Promise.resolve().then(() => engine?.stop()),
+  Promise.resolve().then(() => listener?.remove()),
+ ])
+ if (results.some(result => result.status === 'rejected')) toast('Some capture resources could not be released. Close the app before scanning again.', 'warning')
+}
 async function finish(): Promise<void> {
  if (state.value !== 'capturing' && state.value !== 'starting') return; state.value = 'processing'; error.value = ''; transfer.value = 0
  try {
   if (browser) { finalGeometry.value = browser.snapshot(); await browser.stop(); await checkpointPromise; validateGeometry(finalGeometry.value) }
-  else { const native = await PhoneScanner.stop(); if (native.sessionId !== sessionId || native.projectId !== projectId.value) throw new AppError('The capture result does not match this session.'); const result = await readNativeResult(native, percent => { transfer.value = percent }); finalGeometry.value = result.geometry; source = result.result.source; elapsed = result.result.elapsedMs; warnings = result.result.warnings; capturedAt = result.result.capturedAt }
+  else { const native = await PhoneScanner.stop(); if (native.sessionId !== sessionId || native.projectId !== projectId.value) throw new AppError('The capture result does not match this session.'); const result = await readNativeResult(native, percent => { transfer.value = percent }); finalGeometry.value = result.geometry; source = result.result.source; elapsed = result.result.elapsedMs; warnings = result.result.warnings; capturedAt = result.result.capturedAt; recoveryStored = true }
   if (finalGeometry.value.positions.length < 300) warnings.push('Very little geometry was observed. This is not a complete room scan.')
-  try { await drafts.put({ sessionId, projectId: projectId.value, source, geometry: encodeGeometry(finalGeometry.value), capturedAt, durationMs: elapsed, warnings }) } catch { warnings.push('Recovery storage is unavailable. Keep this screen open and save or export the scan before leaving.') }
+  try { await drafts.put({ sessionId, projectId: projectId.value, source, geometry: encodeGeometry(finalGeometry.value), capturedAt, durationMs: elapsed, warnings }); recoveryStored = true } catch { warnings.push('Recovery storage is unavailable. Keep this screen open and save or export the scan before leaving.') }
   preview.value = [{ scene: scene(finalGeometry.value), geometry: finalGeometry.value }]; state.value = 'review'
  } catch (e) { error.value = errorMessage(e); state.value = 'setup'; await refresh() }
  finally { await release() }
 }
 async function recover(draft?: ScanDraft, native?: NativeResult): Promise<void> {
  if (busy.value) return; busy.value = true; error.value = ''
- try { if (draft && draft.projectId !== projectId.value || native && native.projectId !== projectId.value) throw new AppError('This recovery belongs to another project.'); if (draft) { sessionId = draft.sessionId; source = draft.source; capturedAt = draft.capturedAt; elapsed = draft.durationMs; warnings = draft.warnings; finalGeometry.value = await decodeGeometry(draft.geometry) }
- else if (native) { sessionId = native.sessionId; const result = await readNativeResult(native); source = result.result.source; capturedAt = result.result.capturedAt; elapsed = result.result.elapsedMs; warnings = result.result.warnings; finalGeometry.value = result.geometry; await drafts.put({ sessionId, projectId: projectId.value, source, geometry: encodeGeometry(result.geometry), capturedAt, durationMs: elapsed, warnings }) }
+ try { if (draft && draft.projectId !== projectId.value || native && native.projectId !== projectId.value) throw new AppError('This recovery belongs to another project.'); if (draft) { sessionId = draft.sessionId; source = draft.source; capturedAt = draft.capturedAt; elapsed = draft.durationMs; warnings = draft.warnings; finalGeometry.value = await decodeGeometry(draft.geometry); recoveryStored = true }
+ else if (native) { sessionId = native.sessionId; const result = await readNativeResult(native); source = result.result.source; capturedAt = result.result.capturedAt; elapsed = result.result.elapsedMs; warnings = result.result.warnings; finalGeometry.value = result.geometry; recoveryStored = true
+  try { await drafts.put({ sessionId, projectId: projectId.value, source, geometry: encodeGeometry(result.geometry), capturedAt, durationMs: elapsed, warnings }) }
+  catch { warnings.push('Browser recovery storage is unavailable. The native recovery copy remains on this phone.') }
+ }
  if (finalGeometry.value) { preview.value = [{ scene: scene(finalGeometry.value), geometry: finalGeometry.value }]; state.value = 'review'; saved = false }
  } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
 }
@@ -77,14 +103,35 @@ async function save(): Promise<void> {
 }
 async function discard(id = sessionId): Promise<void> { if (!confirm('Discard this unfinished capture? Saved scan sections will not change.')) return; try { if (live.value) { if (browser) await browser.stop(); else await PhoneScanner.cancel() } await checkpointPromise; await release(); await drafts.remove(id); if (nativeScannerAvailable()) await PhoneScanner.discard({ sessionId: id }); finalGeometry.value = undefined; preview.value = []; state.value = 'setup'; await refresh() } catch (e) { error.value = errorMessage(e) } }
 async function photo(event: Event): Promise<void> { const file = (event.target as HTMLInputElement).files?.[0]; if (!file || busy.value) return; busy.value = true; try { const latest = await repository.get(projectId.value); if (!latest) throw new AppError('This project was removed.'); if (latest.photos.length >= LIMITS.photos) throw new AppError('This project has reached its photo limit.'); const result = await importPhoto(file, latest.id, `Reference photo ${latest.photos.length + 1}`); await repository.save({ ...latest, photos: [...latest.photos, result.photo] }, latest.revision, [result.asset]); toast('Reference photo saved. No 3D reconstruction was performed.', 'success'); await refresh() } catch (e) { error.value = errorMessage(e) } finally { busy.value = false; if (photoInput.value) photoInput.value.value = '' } }
-onMounted(async () => { await nextTick(); await refresh() })
-onBeforeRouteLeave(async () => { if (state.value === 'starting' || state.value === 'processing' || busy.value) return false; if (live.value) { if (!confirm('Stop scanning and leave? A valid partial capture will be kept for recovery.')) return false; await finish(); return true } return state.value !== 'review' || saved || confirm('Leave this unfinished scan in recovery storage? You can review and save it later.') })
+function beforeUnload(event: BeforeUnloadEvent): void {
+ if (live.value || state.value === 'processing' || busy.value || (state.value === 'review' && !saved && !recoveryStored)) {
+  event.preventDefault(); event.returnValue = ''
+ }
+}
+onMounted(async () => { window.addEventListener('beforeunload', beforeUnload); await nextTick(); await refresh() })
+onBeforeRouteLeave(async () => {
+ if (state.value === 'starting' || state.value === 'processing' || busy.value) return false
+ if (live.value) {
+  if (!confirm('Stop scanning before leaving? The app will try to save a recovery copy.')) return false
+  await finish()
+  if (error.value || !recoveryStored) {
+   error.value ||= 'No recovery copy could be saved. Save this scan to the space before leaving, or explicitly discard it.'
+   return false
+  }
+  return true
+ }
+ if (state.value !== 'review' || saved) return true
+ return confirm(recoveryStored
+  ? 'Leave this unfinished scan in recovery storage? You can review and save it later.'
+  : 'No recovery copy could be saved. Leaving will permanently lose this unfinished scan. Leave without saving?')
+})
 onBeforeUnmount(() => {
  dead = true
+ window.removeEventListener('beforeunload', beforeUnload)
  // A parent/error boundary can unmount this view without a router transition.
  // Stop the native camera and retain its recovery checkpoint rather than leave capture running invisibly.
  if (state.value === 'capturing' && selectedEngine.value === 'native') {
-  void PhoneScanner.stop().catch(() => toast('Native capture stopped unexpectedly. Check unfinished captures before starting again.', 'warning'))
+  void stopAbandonedNative()
  }
  void release()
 })
