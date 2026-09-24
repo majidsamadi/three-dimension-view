@@ -35,3 +35,7 @@ ios/**/xcuserdata/
 # Generated reproducibly by scripts/native-setup.mjs. Native plugin source is committed.
 /android/
 /ios/
+
+# Gradle build artifacts anywhere in the tree (e.g. packages/phone-scanner/android/)
+.gradle/
+packages/phone-scanner/android/**/build/
