@@ -113,3 +113,9 @@ docs/                      Architecture, capture contract, provenance, release g
 Majid requested this separate repository on 23 September 2026. The instructions are retained in [owner requirements](docs/OWNER_REQUIREMENTS.md). The older WiseStay master only defines approved 3D-tour references/media privacy; it is **not** a pre-existing specification for this reconstruction engine. This standalone scanner adds no duplicate WiseStay identity or pretend Core integration.
 
 See [Suha provenance](docs/TEMPLATE_PROVENANCE.md) and [third-party notices](THIRD_PARTY_NOTICES.md). The original purchased ZIP, demo storefront pages, unrelated product images, private requirements documents, font files and scan data are not redistributed. Public repository visibility does not grant a licence to extract or resell the purchased template-derived assets.
+
+## October 2026 service requirements — not implemented by this update
+
+The [Home Scanner service integration requirements](docs/SERVICE_REQUIREMENTS_2026-10.md) define the target migration to central SSO, Resvanta property references, the independent scanning SDK, private backend publication, multi-user viewing and WebGPU-first visualization. Existing application code, local data and the implemented behavior above are preserved.
+
+The [shared 3D platform baseline](https://github.com/majidsamadi/three-dimension-view-arcore-backend/blob/6cbca1ccdf4a8e9845b74451448eb0dea4f1109d/docs/PLATFORM_REQUIREMENTS.md) defines scanner, object, Composer and discovery ownership. This documentation does not connect those services, replace legacy capture, convert customer files, implement WebGPU or deploy AWS resources.
