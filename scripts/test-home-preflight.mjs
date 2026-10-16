@@ -23,7 +23,7 @@ if (compiled.status !== 0) {
 
 try {
   const modulePath = join(out, 'preflight.js')
-  const m = await import(pathToFileURL(modulePath).href + '?t=' + Date.now())
+  const m = await import(pathToFileURL(modulePath).href + `?t=${Date.now()}`)
   const local = { id: '11111111-1111-4111-8111-111111111111', revision: 7, name: 'Kitchen example', location: 'Local note only' }
   const intent = { action: 'scan', localProjectId: local.id }
   const caps = (overrides = {}) => ({
