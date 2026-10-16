@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, shallowRef } from 'vue'
+import { computed, inject, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { repository } from '@/data/database'
 import { errorMessage } from '@/domain/validation'
@@ -21,6 +21,7 @@ const controller = shallowRef<HomePreflightController>()
 const snapshot = shallowRef<HomePreflightSnapshot>()
 const loading = ref(true)
 const error = ref('')
+let viewEpoch = 0
 
 const selectedProperty = computed(() => controller.value?.selectedProperty())
 const capabilityRows = computed(() => {
@@ -47,12 +48,19 @@ function stateLabel(state: string): string {
 function setSnapshot(next: HomePreflightSnapshot): void { snapshot.value = next }
 
 async function refreshFacts(): Promise<void> {
-  if (!controller.value) return
+  const current = controller.value
+  if (!current) return
+  const request = viewEpoch
   loading.value = true
   error.value = ''
-  try { setSnapshot(await controller.value.refresh()) }
-  catch (e) { error.value = errorMessage(e) }
-  finally { loading.value = false }
+  try {
+    const next = await current.refresh()
+    if (request === viewEpoch && controller.value === current) setSnapshot(next)
+  } catch (e) {
+    if (request === viewEpoch && controller.value === current) error.value = errorMessage(e)
+  } finally {
+    if (request === viewEpoch && controller.value === current) loading.value = false
+  }
 }
 
 function chooseProperty(event: Event): void {
@@ -66,16 +74,31 @@ function clearExternalContext(): void {
   setSnapshot(controller.value.invalidateAccountContext())
 }
 
-onMounted(async () => {
+async function loadProject(id: string): Promise<void> {
+  const request = ++viewEpoch
+  loading.value = true
+  error.value = ''
+  controller.value = undefined
+  snapshot.value = undefined
   try {
-    const project = await repository.get(projectId.value)
+    const project = await repository.get(id)
+    if (request !== viewEpoch) return
     if (!project) throw new Error('This local project is unavailable on this device.')
     const localProject: LocalProjectContext = { id: project.id, revision: project.revision, name: project.name, location: project.location }
-    controller.value = new HomePreflightController(localProject, { action: 'scan', localProjectId: project.id }, adapters)
-    setSnapshot(controller.value.snapshot())
-    await refreshFacts()
-  } catch (e) { error.value = errorMessage(e); loading.value = false }
-})
+    const current = new HomePreflightController(localProject, { action: 'scan', localProjectId: project.id }, adapters)
+    controller.value = current
+    setSnapshot(current.snapshot())
+    const next = await current.refresh()
+    if (request === viewEpoch && controller.value === current) setSnapshot(next)
+  } catch (e) {
+    if (request === viewEpoch) error.value = errorMessage(e)
+  } finally {
+    if (request === viewEpoch) loading.value = false
+  }
+}
+
+watch(projectId, id => { void loadProject(id) }, { immediate: true })
+onBeforeUnmount(() => { viewEpoch++ })
 </script>
 
 <template>
