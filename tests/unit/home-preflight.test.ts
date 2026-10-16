@@ -96,7 +96,7 @@ describe('home entry/preflight controller', () => {
     const delayed = new Promise<IdentityFact>(resolve => { resolveIdentity = resolve })
     const controller = new HomePreflightController(local, intent, adapters({ identity: { async readCurrent() { return delayed } } }))
     const pending = controller.refresh()
-    const invalidated = controller.invalidateAccountContext()
+    const invalidated = controller.invalidateAccountContext('account switched')
     resolveIdentity(identity('old-user'))
     await pending
     const final = controller.snapshot()
