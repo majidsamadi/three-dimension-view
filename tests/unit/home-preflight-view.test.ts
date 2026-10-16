@@ -35,9 +35,20 @@ function adapterSet(options: {
   properties?: PropertyFactSet
   capabilities?: HomeCapabilityFacts
 } = {}): HomePreflightAdapters {
+  const defaultIdentity: IdentityFact = {
+    state: 'available',
+    userId: 'USER-A',
+    identityContract: 'wisestay-user-v1',
+    detail: 'Synthetic current account fixture.',
+  }
+  const defaultProperties: PropertyFactSet = {
+    state: 'available',
+    contexts: [],
+    detail: 'No canonical property selected by the fixture.',
+  }
   return {
-    identity: { readCurrent: vi.fn(async () => options.identity || { state: 'available', userId: 'USER-A', identityContract: 'wisestay-user-v1', detail: 'Synthetic current account fixture.' }) },
-    properties: { readForIntent: vi.fn(async () => options.properties || { state: 'available', contexts: [], detail: 'No canonical property selected by the fixture.' }) },
+    identity: { readCurrent: vi.fn(async (): Promise<IdentityFact> => options.identity || defaultIdentity) },
+    properties: { readForIntent: vi.fn(async (): Promise<PropertyFactSet> => options.properties || defaultProperties) },
     capabilities: { inspect: vi.fn(async () => options.capabilities || capabilityFacts()) },
   }
 }
