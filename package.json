@@ -20,7 +20,8 @@
     "native:ios": "npm run build && node scripts/native-setup.mjs ios",
     "native:sync": "cap sync",
     "verify:source": "node scripts/verify-source.mjs",
-    "test:scripts": "node --test tests/scripts/*.test.mjs"
+    "test:scripts": "node --test tests/scripts/*.test.mjs",
+    "test:home-preflight": "node scripts/test-home-preflight.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.0.0",
