@@ -57,7 +57,18 @@ async function seed(name: string, location = ''): Promise<Project> {
 
 let wrapper: VueWrapper | undefined
 
-async function mountAt(project: Project, adapters: HomePreflightAdapters): Promise<VueWrapper> {
+async function waitForRendered(predicate: () => boolean, label: string): Promise<void> {
+  await vi.waitFor(() => {
+    expect(predicate(), label).toBe(true)
+  }, { timeout: 2000, interval: 10 })
+}
+
+async function waitForSettled(page: VueWrapper): Promise<void> {
+  await waitForRendered(() => !page.find('.loading-state').exists(), 'Home preflight facts should finish loading')
+  await flushPromises()
+}
+
+async function mountAt(project: Project, adapters: HomePreflightAdapters, settle = true): Promise<VueWrapper> {
   await router.push(`/projects/${project.id}/preflight`)
   await router.isReady()
   wrapper = mount(Host, {
@@ -67,7 +78,8 @@ async function mountAt(project: Project, adapters: HomePreflightAdapters): Promi
       provide: { [HOME_PREFLIGHT_ADAPTERS as symbol]: adapters },
     },
   })
-  await flushPromises()
+  await waitForRendered(() => wrapper!.text().includes(project.name), `Local project ${project.name} should render`)
+  if (settle) await waitForSettled(wrapper)
   return wrapper
 }
 
@@ -79,6 +91,7 @@ function deferred<T>() {
 
 beforeEach(async () => {
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined)
   await clearWorkspace()
 })
 
@@ -145,12 +158,14 @@ describe('Home preflight routed view integration', () => {
     expect((select.element as HTMLSelectElement).value).toBe('')
 
     await select.setValue('PROP-PENDING')
-    expect(page.text()).toContain('PROP-PENDING')
+    await waitForRendered(() => page.text().includes('PROP-PENDING'), 'Pending property selection should render its exact reference')
     expect(page.text()).toContain('Pending review')
+    expect(page.text()).toContain('Pending review fixture.')
 
     await select.setValue('PROP-RESEARCH')
-    expect(page.text()).toContain('PROP-RESEARCH')
+    await waitForRendered(() => page.text().includes('PROP-RESEARCH'), 'Research property selection should render its exact reference')
     expect(page.text()).toContain('Virtual / research')
+    expect(page.text()).toContain('Virtual research fixture.')
 
     const stored = await repository.get(project.id)
     expect(stored?.revision).toBe(project.revision)
@@ -164,7 +179,8 @@ describe('Home preflight routed view integration', () => {
     expect(page.text()).toContain('First local project')
 
     await router.push(`/projects/${second.id}/preflight`)
-    await flushPromises()
+    await waitForRendered(() => page.text().includes('Second local project'), 'Second local project should replace the first route')
+    await waitForSettled(page)
     expect(page.text()).toContain('Second local project')
     expect(page.text()).toContain(second.id)
     expect(page.text()).not.toContain('First local project')
@@ -199,11 +215,13 @@ describe('Home preflight routed view integration', () => {
       capabilities: { inspect: vi.fn(async () => capabilityFacts()) },
     }
 
-    const page = await mountAt(first, adapters)
+    const page = await mountAt(first, adapters, false)
     expect(page.text()).toContain('Slow first project')
 
     await router.push(`/projects/${second.id}/preflight`)
-    await flushPromises()
+    await waitForRendered(() => page.text().includes('Current second project'), 'Second route should replace the delayed first route')
+    await waitForRendered(() => page.text().includes('USER-B'), 'Current second-account fact should render')
+    await waitForSettled(page)
     expect(page.text()).toContain('Current second project')
     expect(page.text()).toContain('USER-B')
 
@@ -241,7 +259,7 @@ describe('Home preflight routed view integration', () => {
 
     const reread = page.findAll('button').find(item => item.text().includes('Re-read injected facts'))!
     await reread.trigger('click')
-    await flushPromises()
+    await waitForRendered(() => page.find('.loading-state').exists(), 'Delayed refresh should enter loading state')
     const clear = page.findAll('button').find(item => item.text().includes('Clear external context presentation'))!
     await clear.trigger('click')
     expect(page.text()).toContain('Account context changed')

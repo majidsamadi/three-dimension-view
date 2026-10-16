@@ -23,7 +23,11 @@ const loading = ref(true)
 const error = ref('')
 let viewEpoch = 0
 
-const selectedProperty = computed(() => controller.value?.selectedProperty())
+const selectedProperty = computed(() => {
+  const current = snapshot.value
+  if (!current?.selectedPropertyRef) return undefined
+  return current.propertyFacts.contexts.find(context => context.reference === current.selectedPropertyRef)
+})
 const capabilityRows = computed(() => {
   const facts = snapshot.value?.capabilities
   if (!facts) return []
