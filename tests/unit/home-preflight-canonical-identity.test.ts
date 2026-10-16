@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   APPLICATIONS,
@@ -123,18 +124,24 @@ describe('canonical Account Centre Home identity adapter', () => {
   })
 
   it('does not request anything for an unregistered origin/disabled canonical session', async () => {
-    const transport = vi.fn<typeof fetch>()
+    let requests = 0
+    let navigations = 0
+    const transport: typeof fetch = async () => {
+      requests++
+      throw new Error('Disabled canonical session must not issue a request.')
+    }
     const session = new WebSession({
       application: 'tenant',
       origin: 'https://unregistered.invalid',
       fetch: transport,
-      navigate: vi.fn(),
+      navigate: () => { navigations++ },
     })
     expect(session.enabled).toBe(false)
     const result = await createCanonicalHomeIdentityAdapter(session).readCurrent()
     expect(result.state).toBe('unavailable')
     expect(result.userId).toBeUndefined()
-    expect(transport).not.toHaveBeenCalled()
+    expect(requests).toBe(0)
+    expect(navigations).toBe(0)
   })
 
   it('does not promote expired or otherwise invalid canonical receipt data', async () => {
