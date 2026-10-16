@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "canonical_repository": "majidsamadi/wisestay-user-management-backend",
+  "canonical_branch": "feature/account-centre-safe-return-context",
+  "canonical_commit": "9ee535d2793ef45a62631fffb8f360e5b30100e0",
+  "files": {
+    "web-session.mjs": {
+      "canonical_path": "clients/web-session/web-session.mjs",
+      "git_blob": "604453c1f75f9651e3b252d89ddc5dcb1f75e970",
+      "sha256": "a6e8d2c8541401c6f9b0e3eef29b7ec086de843f6d5738cea5475d1cb11dd336"
+    },
+    "web-session.d.mts": {
+      "canonical_path": "clients/web-session/web-session.d.mts",
+      "git_blob": "a92264dcd3fd3da02809db4e213f9c8b998319ac",
+      "sha256": "7b61f926bad524ec0e66fa61a05879de7498b6910ac3abb0dbc18e3f49882cbe"
+    }
+  },
+  "consumer": "three-dimension-view Home preflight optional identity adapter",
+  "runtime_binding": "not_configured",
+  "registration": "not_selected",
+  "note": "Vendored byte-for-byte. This manifest does not register Home Scanner, select an origin, or grant property/action authority."
+}
