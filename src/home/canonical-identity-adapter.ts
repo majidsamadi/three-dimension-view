@@ -30,8 +30,7 @@ function validCurrentReceipt(session: WebSession, receipt: Receipt): receipt is 
     receipt.user_id.length > 0 &&
     Number.isSafeInteger(receipt.expires_at) &&
     (receipt.expires_at || 0) * 1000 > Date.now() &&
-    session.authenticated &&
-    session.userId === receipt.user_id
+    session.isCurrent(receipt)
 }
 
 function restoreFailure(error: unknown): IdentityFact {

@@ -182,6 +182,91 @@ describe('canonical Account Centre Home identity adapter', () => {
     expect(result.localProject).toEqual(local)
   })
 
+
+  it('distinguishes a current receipt from a superseded same-user receipt and refuses stale adapter mapping', async () => {
+    let generation = 0
+    const fixture = canonicalFixture(async (path) => {
+      if (path.endsWith('/readiness')) return response({ contract: CONTRACT, ready: true })
+      if (path.endsWith('/bootstrap')) {
+        generation++
+        return response(authenticatedReceipt(USER_A, Math.floor(Date.now() / 1000) + 3600 + generation))
+      }
+      throw new Error('Unexpected canonical operation: ' + path)
+    })
+
+    const first = await fixture.session.restore()
+    if (!first) throw new Error('Expected first canonical receipt.')
+    expect(fixture.session.isCurrent(first)).toBe(true)
+
+    fixture.session.clear()
+    const second = await fixture.session.restore()
+    if (!second) throw new Error('Expected replacement canonical receipt.')
+    expect(second.user_id).toBe(first.user_id)
+    expect(second).not.toBe(first)
+    expect(fixture.session.isCurrent(first)).toBe(false)
+    expect(fixture.session.isCurrent(second)).toBe(true)
+
+    const staleRestore = vi.spyOn(fixture.session, 'restore').mockResolvedValueOnce(first)
+    const stale = await createCanonicalHomeIdentityAdapter(fixture.session).readCurrent()
+    expect(stale.state).toBe('unknown')
+    expect(stale.userId).toBeUndefined()
+    expect(stale.detail).toContain('not a current valid canonical receipt')
+    staleRestore.mockRestore()
+
+    const current = await createCanonicalHomeIdentityAdapter(fixture.session).readCurrent()
+    expect(current.state).toBe('available')
+    expect(current.userId).toBe(USER_A)
+    expect(current.identityContract).toBe('wisestay.identity.v1')
+    expect(fixture.navigations).toEqual([])
+  })
+
+  it('keeps Home non-verified after same-user receipt replacement until the exact current receipt is consumed', async () => {
+    let generation = 0
+    const fixture = canonicalFixture(async (path) => {
+      if (path.endsWith('/readiness')) return response({ contract: CONTRACT, ready: true })
+      if (path.endsWith('/bootstrap')) {
+        generation++
+        return response(authenticatedReceipt(USER_A, Math.floor(Date.now() / 1000) + 3600 + generation))
+      }
+      throw new Error('Unexpected canonical operation: ' + path)
+    })
+    const adapters = createCanonicalHomePreflightAdapters(fixture.session)
+    adapters.capabilities = { async inspect() { return capabilities } }
+    const controller = new HomePreflightController(local, { action: 'scan', localProjectId: local.id }, adapters)
+
+    const firstResult = await controller.refresh()
+    expect(firstResult.identity.state).toBe('available')
+    const firstReceipt = fixture.session.receipt
+    if (!firstReceipt) throw new Error('Expected captured canonical receipt.')
+
+    fixture.session.clear()
+    const replacement = await fixture.session.restore()
+    if (!replacement) throw new Error('Expected replacement canonical receipt.')
+    expect(replacement.user_id).toBe(firstReceipt.user_id)
+    expect(replacement).not.toBe(firstReceipt)
+    expect(fixture.session.isCurrent(firstReceipt)).toBe(false)
+    expect(fixture.session.isCurrent(replacement)).toBe(true)
+
+    controller.invalidateAccountContext('Canonical receipt was replaced.')
+    const staleRestore = vi.spyOn(fixture.session, 'restore').mockResolvedValueOnce(firstReceipt)
+    const staleResult = await controller.refresh()
+    expect(staleResult.identity.state).toBe('unknown')
+    expect(staleResult.identity.userId).toBeUndefined()
+    expect(staleResult.propertyFacts.state).toBe('unavailable')
+    expect(staleResult.propertyFacts.contexts).toEqual([])
+    expect(staleResult.localProject).toEqual(local)
+    staleRestore.mockRestore()
+
+    const currentResult = await controller.refresh()
+    expect(currentResult.identity.state).toBe('available')
+    expect(currentResult.identity.userId).toBe(USER_A)
+    expect(currentResult.identity.identityContract).toBe('wisestay.identity.v1')
+    expect(currentResult.propertyFacts.state).toBe('unavailable')
+    expect(currentResult.propertyFacts.contexts).toEqual([])
+    expect(currentResult.localProject).toEqual(local)
+    expect(fixture.navigations).toEqual([])
+  })
+
   it('does not let a delayed old canonical restore repopulate Home after clear/account invalidation', async () => {
     let releaseBootstrap!: () => void
     let markBootstrapStarted!: () => void
