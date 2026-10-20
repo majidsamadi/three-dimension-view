@@ -119,3 +119,11 @@ See [Suha provenance](docs/TEMPLATE_PROVENANCE.md) and [third-party notices](THI
 The [Home Scanner service integration requirements](docs/SERVICE_REQUIREMENTS_2026-10.md) define the target migration to central SSO, Resvanta property references, the independent scanning SDK, private backend publication, multi-user viewing and WebGPU-first visualization. Existing application code, local data and the implemented behavior above are preserved.
 
 The [shared 3D platform baseline](https://github.com/majidsamadi/three-dimension-view-arcore-backend/blob/6cbca1ccdf4a8e9845b74451448eb0dea4f1109d/docs/PLATFORM_REQUIREMENTS.md) defines scanner, object, Composer and discovery ownership. This documentation does not connect those services, replace legacy capture, convert customer files, implement WebGPU or deploy AWS resources.
+
+## R0 foundation drafts (component-tested at most)
+
+[Legacy preservation register](docs/LEGACY_PRESERVATION_REGISTER.md) (HSA-01.1, HSA-01.3) and [pending owner decisions](docs/DECISIONS_PENDING.md) are drafts for owner review. The Home preflight route now shows one accessible summary state (`src/home/preflight-presentation.ts`); real actions stay disabled.
+
+### Vendored code
+
+`src/vendor/account-centre/web-session.mjs` and `.d.mts` are byte-for-byte copies of `majidsamadi/wisestay-user-management-backend` `clients/web-session/` pinned in `src/vendor/account-centre/shared-auth-source.json` (commit `553ac3c0…`, branch `feature/account-centre-safe-return-context`). `tests/scripts/shared-auth-source.test.mjs` and `tests/scripts/web-session-upstream.test.mjs` check the local bytes offline. To verify the pin against upstream, run `node scripts/check-web-session-upstream.mjs` with an authenticated `gh` CLI (exit 0 pin matches, 1 mismatch, 2 `gh` unavailable). It is not run in CI because the upstream repository is private. Finding (20 Oct 2026): the pin sits on an unmerged upstream feature branch, 2 commits ahead of upstream `main`, and upstream `main` has different bytes. The vendored bytes are deliberately unchanged.
