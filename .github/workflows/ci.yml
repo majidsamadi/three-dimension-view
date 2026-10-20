@@ -45,6 +45,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify:source
+      - run: node scripts/check-contract-fixtures-v0_4.mjs
       - run: npm run typecheck
       - run: npm run test:scripts
       - run: npm test -- --reporter=default --reporter=json --outputFile=unit-test-results.json
