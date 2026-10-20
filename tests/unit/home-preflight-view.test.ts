@@ -293,23 +293,70 @@ describe('Home preflight routed view integration', () => {
       detail: 'Current property facts.',
     }
     const page = await mountAt(project, adapterSet({ properties, capabilities: capabilityFacts({ cameraPermission: fact('unknown', 'Not requested.') }) }))
-    const region = page.get('.preflight-summary')
+    const summary = page.get('.preflight-summary')
+    expect(summary.attributes('data-status')).toBe('unsupported')
+    // A-R4: the live region holds only headline plus explanation; the full text alternative is not live.
+    const region = page.get('.preflight-live')
     expect(region.attributes('role')).toBe('status')
     expect(region.attributes('aria-live')).toBe('polite')
-    expect(region.attributes('data-status')).toBe('unsupported')
     const before = region.text()
     expect(before).toContain('Capture is not supported in this runtime.')
-    expect(before).toContain('Capture: Unavailable.')
     expect(before).toContain('Real actions stay disabled.')
+    expect(before).not.toContain('Capture: Unavailable.')
     expect(before).not.toContain('USER-A')
+    const alternative = page.get('.preflight-text-alternative')
+    expect(alternative.text()).toContain('Capture: Unavailable.')
+    expect(alternative.attributes('aria-live')).toBeUndefined()
+    expect(alternative.element.closest('[aria-live]')).toBeNull()
 
     const clear = page.findAll('button').find(item => item.text().includes('Clear external context presentation'))!
     await clear.trigger('click')
     await waitForRendered(() => page.get('.preflight-summary').attributes('data-status') === 'conflict', 'Summary should report the account change')
-    const after = page.get('.preflight-summary').text()
+    const after = page.get('.preflight-live').text()
     expect(after).not.toBe(before)
     expect(after).toContain('The account changed.')
-    expect(after).toContain('Central identity: Unavailable.')
+    expect(page.get('.preflight-text-alternative').text()).toContain('Central identity: Unavailable.')
     expect(page.findAll('[role="status"][aria-live="polite"]')).toHaveLength(1)
+  })
+
+  it('HSA-02.1 stale facts after context change render stale', async () => {
+    const project = await seed('Stale context project')
+    const properties: PropertyFactSet = {
+      state: 'available',
+      contexts: [{ reference: 'PROP-A', name: 'Property A', kind: 'real', state: 'ready', detail: 'Ready fixture.' }],
+      detail: 'Current property facts.',
+    }
+    const adapters = adapterSet({ properties, capabilities: capabilityFacts({ capture: fact('unknown', 'Not checked.'), cameraPermission: fact('unknown', 'Not requested.') }) })
+    const page = await mountAt(project, adapters)
+    expect(page.get('.preflight-summary').attributes('data-status')).toBe('ready-unqualified')
+
+    // A-R1: the return context changes after the shown facts were read.
+    await router.push({ path: `/projects/${project.id}/preflight`, query: { property: 'PROP-A' } })
+    await waitForRendered(() => page.get('.preflight-summary').attributes('data-status') === 'stale', 'Changed return context should render stale')
+    expect(page.get('.preflight-live').text()).toContain('These facts are out of date.')
+    expect(page.get('.preflight-live').text()).toContain('Re-read facts before relying on them.')
+
+    const reread = page.findAll('button').find(item => item.text().includes('Re-read injected facts'))!
+    await reread.trigger('click')
+    await waitForSettled(page)
+    await waitForRendered(() => page.get('.preflight-summary').attributes('data-status') === 'ready-unqualified', 'Re-read facts should no longer be stale')
+    expect(page.text()).toContain('PROP-A')
+  })
+
+  it('HSA-02.1 loading renders loading', async () => {
+    const project = await seed('Loading project')
+    const late = deferred<IdentityFact>()
+    const adapters: HomePreflightAdapters = {
+      identity: { readCurrent: vi.fn(() => late.promise) },
+      properties: { readForIntent: vi.fn(async () => ({ state: 'available' as const, contexts: [], detail: 'No properties.' })) },
+      capabilities: { inspect: vi.fn(async () => capabilityFacts()) },
+    }
+    const page = await mountAt(project, adapters, false)
+    // A-R1: the controller's loading snapshot is committed, so the summary renders loading.
+    await waitForRendered(() => page.find('.preflight-summary').exists() && page.get('.preflight-summary').attributes('data-status') === 'loading', 'Loading snapshot should render')
+    expect(page.get('.preflight-live').text()).toContain('Reading preflight facts.')
+    late.resolve({ state: 'available', userId: 'USER-A', identityContract: 'wisestay-user-v1', detail: 'Synthetic account.' })
+    await waitForSettled(page)
+    expect(page.get('.preflight-summary').attributes('data-status')).toBe('denied')
   })
 })

@@ -23,6 +23,8 @@ const snapshot = shallowRef<HomePreflightSnapshot>()
 const loading = ref(true)
 const error = ref('')
 const accountChanged = ref(false)
+// A-R1: the controller contextRevision at which the displayed facts were read (or deliberately cleared).
+const observedRevision = ref<number>()
 let accountClears = 0
 let viewEpoch = 0
 
@@ -32,7 +34,7 @@ const selectedProperty = computed(() => {
   return current.propertyFacts.contexts.find(context => context.reference === current.selectedPropertyRef)
 })
 // Single summary state with a text alternative (HSA-02.3, HSA-08.1). Never "ready": capture is unqualified (Q04).
-const presentation = computed(() => snapshot.value ? describeHomePreflight(snapshot.value, undefined, { accountChanged: accountChanged.value }) : undefined)
+const presentation = computed(() => snapshot.value ? describeHomePreflight(snapshot.value, observedRevision.value, { accountChanged: accountChanged.value }) : undefined)
 const capabilityRows = computed(() => {
   const facts = snapshot.value?.capabilities
   if (!facts) return []
@@ -54,7 +56,22 @@ function stateLabel(state: string): string {
   } as Record<string, string>)[state] || state
 }
 
-function setSnapshot(next: HomePreflightSnapshot): void { snapshot.value = next }
+function setSnapshot(next: HomePreflightSnapshot, observed = false): void {
+  snapshot.value = next
+  if (observed) observedRevision.value = next.contextRevision
+}
+
+/** Starts a controller re-read and commits its loading snapshot so `loading` renders (A-R1). */
+function beginRefresh(current: HomePreflightController): Promise<HomePreflightSnapshot> {
+  const pending = current.refresh()
+  setSnapshot(current.snapshot())
+  return pending
+}
+
+function routeProperty(): string | undefined {
+  const value = route.query.property
+  return typeof value === 'string' && value ? value : undefined
+}
 
 async function refreshFacts(): Promise<void> {
   const current = controller.value
@@ -64,11 +81,11 @@ async function refreshFacts(): Promise<void> {
   error.value = ''
   try {
     const clearsAtStart = accountClears
-    const next = await current.refresh()
+    const next = await beginRefresh(current)
     if (request === viewEpoch && controller.value === current) {
       // A completed re-read replaces facts cleared before it started; a clear during the read still wins.
       if (clearsAtStart === accountClears) accountChanged.value = false
-      setSnapshot(next)
+      setSnapshot(next, true)
     }
   } catch (e) {
     if (request === viewEpoch && controller.value === current) error.value = errorMessage(e)
@@ -87,7 +104,20 @@ function clearExternalContext(): void {
   if (!controller.value) return
   accountClears++
   accountChanged.value = true
-  setSnapshot(controller.value.invalidateAccountContext())
+  setSnapshot(controller.value.invalidateAccountContext(), true)
+}
+
+/**
+ * The return context (`?property=`) changed while facts are shown. The controller moves to a new
+ * context revision; the shown facts were read at an older one, so the summary renders `stale`
+ * until they are re-read (A-R1).
+ */
+function returnContextChanged(): void {
+  const current = controller.value
+  if (!current || loading.value) return
+  const reference = routeProperty()
+  if (reference === current.snapshot().intent.canonicalPropertyRef) return
+  setSnapshot(current.replaceIntent({ action: 'scan', localProjectId: current.snapshot().localProject.id, canonicalPropertyRef: reference }))
 }
 
 async function loadProject(id: string): Promise<void> {
@@ -97,16 +127,17 @@ async function loadProject(id: string): Promise<void> {
   controller.value = undefined
   snapshot.value = undefined
   accountChanged.value = false
+  observedRevision.value = undefined
   try {
     const project = await repository.get(id)
     if (request !== viewEpoch) return
     if (!project) throw new Error('This local project is unavailable on this device.')
     const localProject: LocalProjectContext = { id: project.id, revision: project.revision, name: project.name, location: project.location }
-    const current = new HomePreflightController(localProject, { action: 'scan', localProjectId: project.id }, adapters)
+    const current = new HomePreflightController(localProject, { action: 'scan', localProjectId: project.id, canonicalPropertyRef: routeProperty() }, adapters)
     controller.value = current
-    setSnapshot(current.snapshot())
-    const next = await current.refresh()
-    if (request === viewEpoch && controller.value === current) setSnapshot(next)
+    setSnapshot(current.snapshot(), true)
+    const next = await beginRefresh(current)
+    if (request === viewEpoch && controller.value === current) setSnapshot(next, true)
   } catch (e) {
     if (request === viewEpoch) error.value = errorMessage(e)
   } finally {
@@ -115,6 +146,7 @@ async function loadProject(id: string): Promise<void> {
 }
 
 watch(projectId, id => { void loadProject(id) }, { immediate: true })
+watch(() => route.query.property, () => { returnContextChanged() })
 onBeforeUnmount(() => { viewEpoch++ })
 </script>
 
@@ -126,8 +158,10 @@ onBeforeUnmount(() => { viewEpoch++ })
     <p v-if="loading" class="loading-state" role="status">Reading local project and available preflight facts…</p>
 
     <template v-if="snapshot">
-      <section v-if="presentation" class="card detail-card preflight-summary" role="status" aria-live="polite" aria-labelledby="preflight-summary-heading" :data-status="presentation.status">
+      <section v-if="presentation" class="card detail-card preflight-summary" aria-labelledby="preflight-summary-heading" :data-status="presentation.status">
         <div class="section-heading"><div><span class="eyebrow">PREFLIGHT SUMMARY</span><h2 id="preflight-summary-heading">{{ presentation.headline }}</h2></div><span class="status-badge review">{{ HOME_PREFLIGHT_STATUS_LABELS[presentation.status] }}</span></div>
+        <!-- A-R4: only headline plus explanation is live (visually hidden: the same words are shown in the heading and paragraph below); the full text alternative is a non-live paragraph. -->
+        <p class="preflight-live visually-hidden" role="status" aria-live="polite">{{ presentation.headline }} {{ presentation.explanation }}</p>
         <p class="preflight-text-alternative">{{ presentation.textAlternative }}</p>
       </section>
 

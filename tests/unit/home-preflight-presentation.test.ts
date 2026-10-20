@@ -52,6 +52,21 @@ describe('Home preflight presentation states (fixture-driven)', () => {
     if (item.snapshot.identity.userId) expect(result.textAlternative).not.toContain(item.snapshot.identity.userId)
   })
 
+  it('names an unavailable selected property in the headline (A-R2)', () => {
+    // A-R2: d-04-unavailable stays ready-unqualified, but the headline no longer reads as plain "Facts read".
+    // The fixture JSON is unchanged; this expectation is the test-side update.
+    const item = fixture.cases.find(entry => entry.id === 'd-04-unavailable')!
+    const result = describeHomePreflight(item.snapshot, item.observedContextRevision, item.options)
+    expect(result.status).toBe('ready-unqualified')
+    expect(result.headline).toBe('Facts read. Selected property is unavailable. Device capture is not qualified.')
+    const ready = fixture.cases.find(entry => entry.id === 'd-03-virtual-research')!
+    const other = describeHomePreflight(ready.snapshot, ready.observedContextRevision, ready.options)
+    if (other.status === 'ready-unqualified') expect(other.headline).toBe('Facts read. Device capture is not qualified.')
+    // A-R4: the live text is headline plus explanation; the text alternative adds the per-fact summary.
+    expect(result.textAlternative.startsWith(result.explanation)).toBe(true)
+    expect(result.explanation).not.toContain('Capture:')
+  })
+
   it('treats staleness as revision-based only and does not mutate the snapshot', () => {
     const item = fixture.cases.find(entry => entry.id === 'synthetic-stale')!
     const before = JSON.stringify(item.snapshot)

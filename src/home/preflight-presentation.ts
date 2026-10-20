@@ -27,6 +27,8 @@ export interface HomePreflightPresentationFact {
 export interface HomePreflightPresentation {
   status: HomePreflightStatus
   headline: string
+  /** Headline plus explanation is the live-region text (A-R4); the per-fact summary is not live. */
+  explanation: string
   textAlternative: string
   facts: HomePreflightPresentationFact[]
 }
@@ -137,9 +139,13 @@ function derive(
   if (snapshot.propertyFacts.contexts.length === 0) {
     return { status: 'empty', headline: 'No canonical property context is available.', explanation: `The local project stays unmatched. No property is created from its name or location. ${ACTIONS_DISABLED}` }
   }
+  // A-R2: an unavailable selected property is named in the headline instead of reading as plain "Facts read".
+  const selected = snapshot.propertyFacts.contexts.find(context => context.reference === snapshot.selectedPropertyRef)
   return {
     status: 'ready-unqualified',
-    headline: 'Facts read. Device capture is not qualified.',
+    headline: selected?.state === 'unavailable'
+      ? 'Facts read. Selected property is unavailable. Device capture is not qualified.'
+      : 'Facts read. Device capture is not qualified.',
     explanation: `Preflight facts are present, but device capture is not qualified for this device (Q04). Review each fact below. ${ACTIONS_DISABLED}`,
   }
 }
@@ -152,5 +158,5 @@ export function describeHomePreflight(
   const facts = presentationFacts(snapshot)
   const { status, headline, explanation } = derive(snapshot, observedContextRevision, options)
   const summary = facts.map(fact => `${fact.label}: ${fact.state}.`).join(' ')
-  return { status, headline, textAlternative: `${explanation} ${summary}`, facts }
+  return { status, headline, explanation, textAlternative: `${explanation} ${summary}`, facts }
 }
