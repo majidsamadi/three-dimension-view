@@ -3,6 +3,8 @@ import { computed, inject, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NoticeBox from '@/components/NoticeBox.vue'
 import PageHeading from '@/components/PageHeading.vue'
+import ServiceAccountPanel from '@/components/ServiceAccountPanel.vue'
+import { useServiceAccount } from '@/composables/useServiceAccount'
 import { errorMessage } from '@/domain/validation'
 import { SERVICE_PUBLISH_COMPOSITION, createDefaultPublishComposition, type ServicePublishComposition } from '@/service/compositions'
 import { PublicationReviewController, WITHDRAWAL_TEXT, type PublicationSnapshot } from '@/service/publication-review'
@@ -17,6 +19,7 @@ const composition = shallowRef<ServicePublishComposition>()
 const snapshot = shallowRef<PublicationSnapshot>({ status: 'loading' })
 const localError = ref('')
 const withdrawReason = ref('')
+const account = useServiceAccount(message => { localError.value = message })
 let controller: PublicationReviewController | undefined
 let unsubscribe: (() => void) | undefined
 let epoch = 0
@@ -38,6 +41,7 @@ void viewerFactory().then(created => {
 }).catch(e => { viewerText.value = `3D preview unavailable: ${errorMessage(e)}` })
 
 const fixtureMode = computed(() => composition.value?.mode === 'synthetic-fixture')
+const liveMode = computed(() => composition.value?.mode === 'live')
 const summary = computed(() => describePublishView(snapshot.value))
 const review = computed(() => snapshot.value.review)
 const busy = computed(() => ['loading', 'approving', 'publishing', 'withdrawing'].includes(snapshot.value.status))
@@ -81,6 +85,8 @@ async function setup(): Promise<void> {
     const next = injected || (props.fixture ? await props.fixture() : createDefaultPublishComposition())
     if (request !== epoch) return
     composition.value = next
+    await account.attach(next.account)
+    if (request !== epoch) return
     const sceneId = String(route.params.sceneId || next.fixtureSceneId || '')
     const created = new PublicationReviewController(sceneId, next.api)
     attach(created)
@@ -98,16 +104,21 @@ function reload(): void { if (!reloadBlocked.value) void controller?.load(snapsh
 function approve(): void { if (!approveBlocked.value) void controller?.approve() }
 function publish(): void { if (!publishBlocked.value) void controller?.publish() }
 function withdraw(): void { if (!withdrawBlocked.value) void controller?.withdraw(withdrawReason.value) }
+function signIn(): void { void account.signIn(route.fullPath) }
+// Re-read after signing out so no scene detail from the ended session stays on screen.
+function signOut(): void { void account.signOut().then(() => setup()) }
 
 watch(() => route.params.sceneId, () => { void setup() }, { immediate: true })
-onBeforeUnmount(() => { epoch++; unsubscribe?.(); viewerDisposed = true; void viewer?.dispose() })
+onBeforeUnmount(() => { epoch++; unsubscribe?.(); account.dispose(); viewerDisposed = true; void viewer?.dispose() })
 </script>
 
 <template>
   <div class="container narrow">
     <PageHeading back="/" eyebrow="SERVICE MODE · PUBLICATION" title="Review before publishing." subtitle="Check the exact version and what viewers receive. A publication counts only when the service confirms it."/>
     <NoticeBox v-if="fixtureMode" kind="warning"><strong>Prototype / synthetic / not connected.</strong> This review fixture uses an in-memory synthetic service. Nothing leaves the browser.</NoticeBox>
+    <NoticeBox v-else-if="liveMode" kind="info"><strong>Home Scanner development service.</strong> Requests go through your WiseStay session. Use synthetic content only.</NoticeBox>
     <NoticeBox v-else kind="info"><strong>Not connected.</strong> The Home Scanner service connection is not wired in this build. Every request answers “not connected”.</NoticeBox>
+    <ServiceAccountPanel :state="account.state.value" :busy="account.busy.value" @sign-in="signIn" @sign-out="signOut"/>
 
     <section class="card detail-card service-status" :data-status="summary.status" aria-labelledby="service-publish-status-heading">
       <span id="service-publish-status-heading" class="eyebrow">PUBLICATION STATUS</span>

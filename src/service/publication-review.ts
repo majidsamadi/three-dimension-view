@@ -109,6 +109,7 @@ export type PublicationStatus =
   | 'withdrawing'
   | 'withdrawn'
   | 'not-found'
+  | 'signed-out'
   | 'failed'
 
 export interface PublicationSnapshot {
@@ -126,6 +127,7 @@ export interface PublicationSnapshot {
 function problemStatus(error: unknown): { status: PublicationStatus; problem: { status: number; code: string } } {
   if (!isServiceProblem(error)) return { status: 'offline', problem: { status: 0, code: 'network_unavailable' } }
   const problem = { status: error.status, code: error.code }
+  if (error.status === 401) return { status: 'signed-out', problem }
   if (error.code === 'version_conflict') return { status: 'conflict', problem }
   if (error.status === 403) return { status: 'denied', problem }
   if (error.status === 503) return { status: 'offline', problem }

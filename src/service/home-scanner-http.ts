@@ -36,10 +36,11 @@ import {
 /**
  * HTTP Home Scanner client through the User Management BFF (plan X.1, X.6).
  *
- * Status: component-tested (synthetic data only). The app never calls the API host directly and
- * this module never calls the browser network API itself: every request goes through an injected
- * transport. The vendored web-session pin (553ac3c) does not list this app yet, so the default
- * composition uses `createDisconnectedTransport()`.
+ * Status: component-tested (synthetic data only). The app never calls the API host directly: API
+ * requests go through an injected transport, live mode only through the vendored WebSession.
+ * The only direct network use is the presigned component PUT. The vendored web-session pin
+ * (553ac3c) does not list this app yet, so the default composition stays on
+ * `createDisconnectedTransport()` until the client is re-vendored.
  */
 
 /** `conventions.v0.4.json` bff.path_template. */
@@ -82,6 +83,79 @@ export function createDisconnectedTransport(): Transport {
       request_id: 'disconnected',
     },
   })
+}
+
+/**
+ * The part of the vendored `WebSession` (User Management `clients/web-session`) this app uses.
+ * Kept structural so tests inject a fake session with no network.
+ */
+export interface SessionLike {
+  readonly enabled: boolean
+  readonly authenticated: boolean
+  restore(force?: boolean): Promise<unknown>
+  start(path?: string): Promise<void>
+  logout(): Promise<void>
+  fetch(path: string, init?: RequestInit, service?: string): Promise<Response>
+}
+
+function problemResponse(status: number, code: string): TransportResponse {
+  return {
+    status,
+    headers: { 'Content-Type': 'application/problem+json' },
+    body: { type: `https://wizestay.com/problems/${code}`, title: code, status, code, request_id: 'web-session' },
+  }
+}
+
+function sessionErrorCode(error: unknown): { status: number; code: string } | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const { status, code } = error as { status?: unknown; code?: unknown }
+  return typeof status === 'number' && typeof code === 'string' && /^[a-z0-9_]{1,100}$/.test(code) ? { status, code } : undefined
+}
+
+/**
+ * Live transport through the same-origin User Management BFF (plan §3.2, §6.3.1).
+ *
+ * The client builds `/api/v1/web-session/home-scanner/api/home-scanner<path>`; the session receives
+ * only `<path>` (the backend path after `/api/v1`) and service `home-scanner`, and adds the session
+ * and CSRF headers itself. A 401 (from the BFF or a session error) calls `onSignedOut`.
+ * Session errors become `application/problem+json` responses carrying their own code, so CSRF
+ * and session failures stay visible; anything else is 503 `dependency_unavailable`.
+ */
+export function createWebSessionTransport(session: SessionLike, onSignedOut: () => void = () => {}): Transport {
+  const prefix = homeScannerBffPath('')
+  return async (method, bffPath, request) => {
+    if (!bffPath.startsWith(prefix + '/')) return problemResponse(400, 'unsafe_api_path')
+    const init: RequestInit = { method, headers: request.headers }
+    if (request.body !== undefined) init.body = JSON.stringify(request.body)
+    let response: Response
+    try {
+      response = await session.fetch(bffPath.slice(prefix.length), init, BFF_SERVICE)
+    } catch (error) {
+      const known = sessionErrorCode(error)
+      if (known?.status === 401) onSignedOut()
+      return known && known.status >= 400 ? problemResponse(known.status, known.code) : problemResponse(503, 'dependency_unavailable')
+    }
+    if (response.status === 401) onSignedOut()
+    const headers: Record<string, string> = {}
+    response.headers.forEach((value, name) => { headers[name.toLowerCase() === 'content-type' ? 'Content-Type' : name] = value })
+    let body: unknown = null
+    if (/^application\/(problem\+)?json\b/i.test(headers['Content-Type'] || '')) {
+      try { body = await response.json() } catch { body = null }
+    }
+    return { status: response.status, headers, body }
+  }
+}
+
+/**
+ * Presigned component PUT straight to the private asset bucket (Q15: 15-minute URL issued after the
+ * service authorisation check). Only the headers the service signed are sent; no cookies.
+ */
+export function createPresignedPut(send: (url: string, init: RequestInit) => Promise<Response> = (url, init) => globalThis.fetch(url, init)) {
+  return async (url: string, headers: Record<string, string>, bytes: Uint8Array): Promise<{ status: number }> => {
+    if (!/^https:\/\//.test(url)) throw new TypeError('Upload links must be https.')
+    const response = await send(url, { method: 'PUT', headers, body: bytes as BodyInit, credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer' })
+    return { status: response.status }
+  }
 }
 
 export function randomIdempotencyKey(): string {

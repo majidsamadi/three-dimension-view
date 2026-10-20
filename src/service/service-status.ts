@@ -15,6 +15,7 @@ export type UploadViewStatus =
   | 'ready'
   | 'offline'
   | 'denied'
+  | 'signed-out'
   | 'conflict'
   | 'transferring'
   | 'paused'
@@ -51,6 +52,7 @@ export function describeUploadView(input: { loading: boolean; project?: { sceneC
   if (problem && paused) {
     const kept = transfer.state === 'paused' ? ' The same upload is kept and can resume.' : ' Nothing was uploaded.'
     if (problem.status === 503 || problem.status === 0) return { status: 'offline', headline: `The Home Scanner service is not connected or the network is unavailable.${kept}` }
+    if (problem.status === 401) return { status: 'signed-out', headline: `You are signed out of WiseStay. Sign in to continue.${kept}` }
     if (problem.status === 403) return { status: 'denied', headline: `This account is not allowed to do this.${kept}` }
     if (problem.status === 409) return { status: 'conflict', headline: `The upload record changed elsewhere. Re-check before continuing.${kept}` }
     if (transfer.state === 'selecting') return { status: 'failed', headline: `The service refused the upload: ${reasonText([problem.code])}. Nothing was uploaded.` }
@@ -102,6 +104,7 @@ export function describePublishView(snapshot: PublicationSnapshot): ServiceHeadl
     case 'withdrawing': return { status: 'withdrawing', headline: 'Withdrawing the publication.' }
     case 'withdrawn': return { status: 'withdrawn', headline: 'This scene is withdrawn. New viewers are blocked; issued view links expire within 5 minutes.' }
     case 'not-found': return { status: 'not-found', headline: 'This scene was not found or is not visible to this account.' }
+    case 'signed-out': return { status: 'signed-out', headline: 'You are signed out of WiseStay. Sign in to read this scene; nothing was changed.' }
     case 'failed': return { status: 'failed', headline: `The service refused the request (${snapshot.problem?.code ?? 'unknown'}). Nothing was published.` }
   }
 }
