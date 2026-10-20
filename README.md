@@ -45,7 +45,7 @@ npm run test:e2e
 npm run preview
 ```
 
-`dist/` is a static SPA. No Node reconstruction server, SSR runtime, API key, AWS account or login is required. When hosting below a subpath, set `APP_BASE_PATH=/chosen-path/` at build time and configure history fallback to that path’s `index.html`. See [deployment](docs/DEPLOYMENT.md). No deployment is performed by CI.
+`dist/` is a static SPA. No Node reconstruction server, SSR runtime, API key, AWS account or login is required. When hosting below a subpath, set `APP_BASE_PATH=/chosen-path/` at build time and configure history fallback to that path’s `index.html`. See [deployment](docs/DEPLOYMENT.md). The only CI deployment is the guarded dev site publication described in “Wave 3 dev hosting”.
 
 ## Run on a phone
 
@@ -119,6 +119,24 @@ See [Suha provenance](docs/TEMPLATE_PROVENANCE.md) and [third-party notices](THI
 The [Home Scanner service integration requirements](docs/SERVICE_REQUIREMENTS_2026-10.md) define the target migration to central SSO, Resvanta property references, the independent scanning SDK, private backend publication, multi-user viewing and WebGPU-first visualization. Existing application code, local data and the implemented behavior above are preserved.
 
 The [shared 3D platform baseline](https://github.com/majidsamadi/three-dimension-view-arcore-backend/blob/6cbca1ccdf4a8e9845b74451448eb0dea4f1109d/docs/PLATFORM_REQUIREMENTS.md) defines scanner, object, Composer and discovery ownership. This documentation does not connect those services, replace legacy capture, convert customer files, implement WebGPU or deploy AWS resources.
+
+## Wave 3 dev hosting
+
+Status: component-tested (synthetic data only). Dev deploy pipeline configured: implemented and locally verified. It has not published yet, so nothing is live until a deploy run's receipt exists.
+
+- **Site.** `https://home-scanner.wizestay.com`, bucket `wisestay-web-home-scanner-511831442607`, CloudFront distribution and publisher role `wisestay-web-home-scanner-publisher`, all in account 511831442607. The hosting is owned by `wisestay-infrastructure` `applications/three-d-dev` (owner bootstrap); this repository owns only the site content.
+- **Build.** `npm run build` writes `dist/` plus `dist/release.json` (`{repository, origin, revision, files: {path: sha256}}`; revision is `$GITHUB_SHA` or `local`).
+- **Pipeline.** The `deploy` job in `.github/workflows/ci.yml` runs only on a push to `main` (or `workflow_dispatch` with `deploy: true` on `main`), after `source` and `web` pass. It uses GitHub OIDC only, with `allowed-account-ids: '511831442607'`. Before publishing it checks the caller account and the publisher-role session. Then `deployment/publish.py`:
+  - checks `deployment/activation.json` (otherwise `held`) and that this run is the current main
+  - reads the bucket and distribution from SSM `/wisestay/dev/websites/home-scanner/publication` and checks the distribution alias and S3 origin
+  - re-hashes `dist/` against `release.json`
+  - syncs assets (never deletes), then uploads the entry files with `no-store`
+  - invalidates `/*`
+  - smoke: live `release.json` revision, the `index.html` hash, a JSON 200 from `/api/v1/web-session/home-scanner/readiness` (not the SPA page) and 403/404 for `/assets/missing.js`
+  - writes `dist/deployment-receipt.json`, uploaded as artifact `deployment-receipt-<sha>` (30 days)
+- **API and sign-in.** No API URL is baked into the build. Service mode calls only the same-origin route `/api/v1/web-session/home-scanner/api/home-scanner<path>`. CloudFront forwards it to the User Management session service, which adds the user's central `user.wizestay.com` token and forwards to `https://home-scanner.dev.wizestay.com/api/v1`. Live mode, with “Sign in with WiseStay” and “Sign out”, turns on only when the vendored web-session client registers `home-scanner` and the page runs on that exact origin. The current pin (`553ac3c`) does not register it, so service mode stays “Not connected” until the client is re-vendored.
+- **Property (Q14).** No property service is connected. In live mode the upload view says “Property service not connected (Q14)” and uploads stay blocked.
+- **Rollback.** Revert the merge on `main`; the next main run republishes the previous build. Old hashed assets are never deleted.
 
 ## R0 foundation drafts (component-tested at most)
 

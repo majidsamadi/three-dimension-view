@@ -4,11 +4,19 @@ on:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Publish the verified current main commit to the dev site (account 511831442607)
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a main run: its deploy job may be mid-publication.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   source:
     name: Source provenance
@@ -50,6 +58,11 @@ jobs:
       - run: npm run test:scripts
       - run: npm test -- --reporter=default --reporter=json --outputFile=unit-test-results.json
       - run: npm run build
+      - name: Deployment script and workflow tests
+        run: |
+          python3 -m venv "$RUNNER_TEMP/deploy-tests"
+          "$RUNNER_TEMP/deploy-tests/bin/python" -m pip install --require-hashes --only-binary=:all: --no-deps -r deployment/requirements-ci.txt
+          "$RUNNER_TEMP/deploy-tests/bin/python" -m unittest discover -s deployment -p 'test_*.py' -v
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - name: Gate dependency vulnerabilities and retain the report
@@ -135,3 +148,59 @@ jobs:
             ios-build.log
             ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app/
           retention-days: 14
+  deploy:
+    name: Guarded dev site publication (OIDC, account 511831442607)
+    needs: [source, web]
+    if: github.repository == 'majidsamadi/three-dimension-view' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: wisestay-web-home-scanner-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build the site and its release manifest for this revision
+        run: npm run build
+      - name: Reject superseded main before AWS credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"
+      - name: Assume only the Home Scanner site publisher role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
+        with:
+          role-to-assume: arn:aws:iam::511831442607:role/wisestay-web-home-scanner-publisher
+          aws-region: ap-southeast-1
+          allowed-account-ids: '511831442607'
+          role-session-name: home-scanner-publish-${{ github.run_id }}
+          role-duration-seconds: 3600
+          unset-current-credentials: true
+      - name: Verify caller account 511831442607 and the publisher role before publishing
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "511831442607"
+          case "$(aws sts get-caller-identity --query Arn --output text)" in
+            arn:aws:sts::511831442607:assumed-role/wisestay-web-home-scanner-publisher/*) ;;
+            *) echo "Unexpected caller role" >&2; exit 1 ;;
+          esac
+      - name: Publish, invalidate and verify the live site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 deployment/publish.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: deployment-receipt-${{ github.sha }}
+          path: dist/deployment-receipt.json
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 30

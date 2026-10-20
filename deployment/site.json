@@ -1,0 +1,16 @@
+{
+  "contract": "wisestay.3d.site-config.v1",
+  "repository": "majidsamadi/three-dimension-view",
+  "site": "home-scanner",
+  "origin": "https://home-scanner.wizestay.com",
+  "publication_parameter": "/wisestay/dev/websites/home-scanner/publication",
+  "bucket": "wisestay-web-home-scanner-511831442607",
+  "publisher_role_arn": "arn:aws:iam::511831442607:role/wisestay-web-home-scanner-publisher",
+  "publisher_session_prefix": "arn:aws:sts::511831442607:assumed-role/wisestay-web-home-scanner-publisher/",
+  "account": "511831442607",
+  "region": "ap-southeast-1",
+  "environment": "dev",
+  "session_route": "/api/v1/web-session/home-scanner/",
+  "build_command": "npm run build",
+  "output": "dist"
+}

@@ -1,6 +1,6 @@
 # Build, static hosting and rollback
 
-The app is an independently deployable static Vue SPA. `npm ci && npm run build` creates `dist/`. No cloud infrastructure is applied by this repository, and no bank, identity provider or business API is activated.
+The app is an independently deployable static Vue SPA. `npm ci && npm run build` creates `dist/` and `dist/release.json`. No cloud infrastructure is applied by this repository, and no bank, identity provider or business API is activated. The guarded dev publication to `https://home-scanner.wizestay.com` (wave 3, `deployment/publish.py`) only uploads site files to hosting that `wisestay-infrastructure` owns; see the README section “Wave 3 dev hosting”.
 
 Host over HTTPS, serve `.webmanifest` and JavaScript with correct MIME types, and use history fallback to `index.html` for application routes. Do not turn asset 404s into cached HTML. Example Nginx location rules inside an existing TLS server:
 
