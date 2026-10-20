@@ -7,7 +7,7 @@ import { checkLocal, MANIFEST_PATH, parseManifest, sha256 } from '../../scripts/
 test('vendored WebSession bytes match the pinned manifest without network access', () => {
   const { manifest, files } = checkLocal()
   assert.equal(manifest.repository, 'majidsamadi/wisestay-user-management-backend')
-  assert.equal(manifest.commit, '553ac3c08973114f26271d1a751437d9203b5cd4')
+  assert.equal(manifest.commit, '5b085956d3435145fe80922a53d4d304aa19f97f')
   assert.deepEqual(files.map(file => file.canonicalPath), ['clients/web-session/web-session.mjs', 'clients/web-session/web-session.d.mts'])
   for (const file of files) assert.equal(file.localMatches, true, file.localName)
 })

@@ -17,6 +17,14 @@ function unknownIdentity(detail: string): IdentityFact {
   return { state: 'unknown', detail }
 }
 
+/**
+ * Process-local receipt currentness: the exact receipt object the session holds now, while it is
+ * authenticated. Not a resource or action grant. (The canonical client at the wave 3 pin has no
+ * `isCurrent()`, so Home keeps the same check locally.)
+ */
+export function isCurrentReceipt(session: WebSession, receipt: Receipt | null): boolean {
+  return receipt !== null && receipt === session.receipt && session.authenticated
+}
 function validCurrentReceipt(session: WebSession, receipt: Receipt): receipt is Receipt & {
   authenticated: true
   user_id: string
@@ -30,7 +38,7 @@ function validCurrentReceipt(session: WebSession, receipt: Receipt): receipt is 
     receipt.user_id.length > 0 &&
     Number.isSafeInteger(receipt.expires_at) &&
     (receipt.expires_at || 0) * 1000 > Date.now() &&
-    session.isCurrent(receipt)
+    isCurrentReceipt(session, receipt)
 }
 
 function restoreFailure(error: unknown): IdentityFact {

@@ -16,7 +16,8 @@ import type { LocalComponent, PutComponent, UploadSelection } from './upload-tra
  * `HttpHomeScannerApi(createDisconnectedTransport())` answers 503 to every call and the default
  * component PUT never touches the network. Live mode is selected only when the vendored
  * web-session client registers `home-scanner` and the page runs on that exact origin
- * (`WebSession.enabled`); with the current pin (553ac3c) it is unreachable.
+ * (`WebSession.enabled`). The wave 3 pin registers `home-scanner`, so live mode turns on only at
+ * `https://home-scanner.wizestay.com`; any other origin (local dev, previews) stays disconnected.
  * Review-fixture compositions use `FakeHomeScannerApi` and are labelled
  * "Prototype / synthetic / not connected".
  */

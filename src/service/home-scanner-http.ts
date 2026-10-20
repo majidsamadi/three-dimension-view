@@ -38,9 +38,9 @@ import {
  *
  * Status: component-tested (synthetic data only). The app never calls the API host directly: API
  * requests go through an injected transport, live mode only through the vendored WebSession.
- * The only direct network use is the presigned component PUT. The vendored web-session pin
- * (553ac3c) does not list this app yet, so the default composition stays on
- * `createDisconnectedTransport()` until the client is re-vendored.
+ * The only direct network use is the presigned component PUT. The vendored web-session client
+ * lists this app; off its exact origin the default composition stays on
+ * `createDisconnectedTransport()`.
  */
 
 /** `conventions.v0.4.json` bff.path_template. */
