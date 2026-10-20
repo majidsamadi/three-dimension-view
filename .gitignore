@@ -39,3 +39,5 @@ ios/**/xcuserdata/
 # Gradle build artifacts anywhere in the tree (e.g. packages/phone-scanner/android/)
 .gradle/
 packages/phone-scanner/android/**/build/
+# Synthetic 1 m unit box from the v0.4 draft contract fixtures (S0.2). Generated test asset, not a scan.
+!contracts/draft/v0.4/fixtures/assets/synthetic-unit-box.glb
