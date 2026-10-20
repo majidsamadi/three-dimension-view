@@ -1,0 +1,980 @@
+{
+  "source": {
+    "packet": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip",
+    "packet_sha256": "450d89d03382ffe22e80aabc67a00ec25db046c61d999f04a3680889dfb5cac4",
+    "record": "D-P06-HOME-ENTRY-PREFLIGHT-PROTOTYPE-01 v1.0 (smoke D-P06-HOME-ENTRY-PREFLIGHT-SMOKE-01, evidence/journey_002, PASS_SYNTHETIC_HOME_P06_UI_ONLY)",
+    "transcription": "Detail strings are copied from evidence/journey_002/*.visible.txt. The prototype showed camera denial and storage pressure in its Capture row and the missing asset in its Viewing row; here they map to the HSA cameraPermission, storage and assets facts. Strings the prototype did not show use the HSA defaults from unknownCapabilities() in src/home/preflight.ts. Property references are synthetic.",
+    "status": "synthetic fixture; component-tested at most; not device evidence"
+  },
+  "cases": [
+    {
+      "id": "d-01-unmatched",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/01-unmatched-local-context.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1
+      },
+      "expected": {
+        "status": "empty",
+        "textIncludes": [
+          "The local project stays unmatched.",
+          "Canonical property: No canonical association.",
+          "Real actions stay disabled."
+        ]
+      }
+    },
+    {
+      "id": "d-02-pending-review",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/02-pending-review-context.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-PENDING"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-PENDING",
+              "name": "Pending review · synthetic fixture",
+              "kind": "real",
+              "state": "pending-review",
+              "detail": "An authoritative property record is represented as pending review. No scan admission, property creation or local-master fallback follows."
+            }
+          ],
+          "detail": "An authoritative property record is represented as pending review. No scan admission, property creation or local-master fallback follows."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1,
+        "selectedPropertyRef": "PROP-SYNTH-PENDING"
+      },
+      "expected": {
+        "status": "ready-unqualified",
+        "textIncludes": [
+          "device capture is not qualified",
+          "Canonical property: Pending review.",
+          "Real actions stay disabled."
+        ]
+      }
+    },
+    {
+      "id": "d-03-virtual-research",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/03-virtual-research-context.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-RESEARCH"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-RESEARCH",
+              "name": "Virtual / research · synthetic fixture",
+              "kind": "virtual",
+              "state": "virtual-research",
+              "detail": "A virtual/research context is displayed distinctly. Occupancy, bookability, current action eligibility and physical-address meaning are not inferred."
+            }
+          ],
+          "detail": "A virtual/research context is displayed distinctly. Occupancy, bookability, current action eligibility and physical-address meaning are not inferred."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1,
+        "selectedPropertyRef": "PROP-SYNTH-RESEARCH"
+      },
+      "expected": {
+        "status": "ready-unqualified",
+        "textIncludes": [
+          "device capture is not qualified",
+          "Canonical property: Virtual / research.",
+          "Real actions stay disabled."
+        ]
+      }
+    },
+    {
+      "id": "d-04-unavailable",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/04-unavailable-context.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-UNAVAILABLE",
+              "name": "Unavailable · synthetic fixture",
+              "kind": "real",
+              "state": "unavailable",
+              "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+            }
+          ],
+          "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1,
+        "selectedPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+      },
+      "expected": {
+        "status": "ready-unqualified",
+        "textIncludes": [
+          "device capture is not qualified",
+          "Canonical property: Unavailable.",
+          "Real actions stay disabled."
+        ]
+      }
+    },
+    {
+      "id": "d-05-camera-denied",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/05-camera-denied-fixture.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-UNAVAILABLE",
+              "name": "Unavailable · synthetic fixture",
+              "kind": "real",
+              "state": "unavailable",
+              "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+            }
+          ],
+          "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "Viewing support is independent of the authored camera denial and is not probed here."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Measurement capability/accuracy is not inferred from camera permission."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Offline readiness is not inferred from a camera denial."
+          },
+          "cameraPermission": {
+            "state": "unavailable",
+            "detail": "No permission prompt ran. The fixture represents the HSA failure state; it is not a device or browser observation."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1,
+        "selectedPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+      },
+      "expected": {
+        "status": "denied",
+        "textIncludes": [
+          "Capture stays blocked.",
+          "Camera permission: Unavailable."
+        ]
+      }
+    },
+    {
+      "id": "d-06-storage-pressure",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/06-storage-pressure-fixture.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-UNAVAILABLE",
+              "name": "Unavailable · synthetic fixture",
+              "kind": "real",
+              "state": "unavailable",
+              "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+            }
+          ],
+          "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "Existing local viewing is not treated as proof that new capture storage is safe."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Measurement remains a separate saved-data/quality concern."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Local-first does not mean unlimited or persistent storage."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "pressure",
+            "detail": "The fixture represents storage pressure before capture. No quota probe, threshold or storage policy is selected."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1,
+        "selectedPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+      },
+      "expected": {
+        "status": "ready-unqualified",
+        "textIncludes": [
+          "device capture is not qualified",
+          "Storage: Pressure reported."
+        ]
+      }
+    },
+    {
+      "id": "d-07-missing-asset",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/07-missing-asset-fixture.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-UNAVAILABLE",
+              "name": "Unavailable · synthetic fixture",
+              "kind": "real",
+              "state": "unavailable",
+              "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+            }
+          ],
+          "detail": "The canonical record is unavailable in this authored example. The local project remains readable/unmatched; no replacement local property master is created."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Capture capability is not inferred from a missing saved asset."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unavailable",
+            "detail": "A missing source asset cannot support a new measurement claim. No physical result is inferred."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Local storage and offline behavior remain separate from whether the required saved asset is present."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unavailable",
+            "detail": "The retained source treats missing project assets as an explicit recoverable failure rather than substituting another model. No actual asset was read here."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1,
+        "selectedPropertyRef": "PROP-SYNTH-UNAVAILABLE"
+      },
+      "expected": {
+        "status": "ready-unqualified",
+        "textIncludes": [
+          "Local assets: Unavailable.",
+          "Measurement: Unavailable."
+        ]
+      }
+    },
+    {
+      "id": "d-08-return-to-unknown",
+      "origin": "WiseStay_Team_D_P06_Home_Entry_Preflight_v1.0.zip evidence/journey_002/08-return-to-unknown.visible.txt",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1
+      },
+      "expected": {
+        "status": "empty",
+        "textIncludes": [
+          "The local project stays unmatched."
+        ]
+      }
+    },
+    {
+      "id": "synthetic-loading",
+      "origin": "synthetic (HSA-08.1 state coverage)",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": true,
+        "contextRevision": 1
+      },
+      "expected": {
+        "status": "loading",
+        "textIncludes": [
+          "Nothing is started"
+        ]
+      }
+    },
+    {
+      "id": "synthetic-conflict-property",
+      "origin": "synthetic (HSA-08.1 state coverage)",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111",
+          "canonicalPropertyRef": "PROP-SYNTH-MISSING"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "available",
+          "contexts": [
+            {
+              "reference": "PROP-SYNTH-OTHER",
+              "name": "Other synthetic property",
+              "kind": "real",
+              "state": "ready",
+              "detail": "Synthetic other property."
+            }
+          ],
+          "detail": "Synthetic property facts."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1
+      },
+      "expected": {
+        "status": "conflict",
+        "textIncludes": [
+          "PROP-SYNTH-MISSING is not among the properties supplied",
+          "No property is substituted or created."
+        ]
+      }
+    },
+    {
+      "id": "synthetic-conflict-account",
+      "origin": "synthetic (HSA-08.1 state coverage)",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "Account context changed; current identity and property facts must be re-read."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1
+      },
+      "options": {
+        "accountChanged": true
+      },
+      "expected": {
+        "status": "conflict",
+        "textIncludes": [
+          "after an account change"
+        ]
+      }
+    },
+    {
+      "id": "synthetic-stale",
+      "origin": "synthetic (HSA-08.1 state coverage); revision-based, no time threshold",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 3
+      },
+      "observedContextRevision": 2,
+      "expected": {
+        "status": "stale",
+        "textIncludes": [
+          "read at revision 2, current revision 3",
+          "Re-read facts"
+        ]
+      }
+    },
+    {
+      "id": "synthetic-unsupported",
+      "origin": "synthetic (HSA-08.1 state coverage)",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unavailable",
+            "detail": "Synthetic unsupported capture fixture."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unknown",
+            "detail": "Capture/geometry processing are local in the retained workflow, with installed/cached application and platform-component caveats. No universal offline support is claimed."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1
+      },
+      "expected": {
+        "status": "unsupported",
+        "textIncludes": [
+          "No supported capture path was reported.",
+          "Capture: Unavailable."
+        ]
+      }
+    },
+    {
+      "id": "synthetic-offline",
+      "origin": "synthetic (HSA-08.1 state coverage)",
+      "snapshot": {
+        "localProject": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "revision": 1,
+          "name": "Kitchen example",
+          "location": ""
+        },
+        "intent": {
+          "action": "scan",
+          "localProjectId": "11111111-1111-4111-8111-111111111111"
+        },
+        "identity": {
+          "state": "unavailable",
+          "detail": "No Account Centre flow, callback or credential exists in this prototype."
+        },
+        "propertyFacts": {
+          "state": "unknown",
+          "contexts": [],
+          "detail": "The retained local project stays unmatched. No service record is fabricated."
+        },
+        "capabilities": {
+          "capture": {
+            "state": "unknown",
+            "detail": "Current device, native bridge, WebXR depth, camera permission and capture profile are not supplied to this prototype."
+          },
+          "viewing": {
+            "state": "unknown",
+            "detail": "The retained app has a local 3D viewer and explicit graphics failure state. This screen does not create a renderer or claim this device can render it."
+          },
+          "measurement": {
+            "state": "unqualified",
+            "detail": "Saved measurements are displayed as approximate in the retained viewer. No survey, device or physical accuracy evidence is created here."
+          },
+          "offline": {
+            "state": "unavailable",
+            "detail": "Synthetic offline-unavailable fixture."
+          },
+          "cameraPermission": {
+            "state": "unknown",
+            "detail": "Camera permission has not been requested."
+          },
+          "storage": {
+            "state": "unknown",
+            "detail": "Storage pressure has not been established."
+          },
+          "assets": {
+            "state": "unknown",
+            "detail": "Local asset completeness has not been checked."
+          }
+        },
+        "loading": false,
+        "contextRevision": 1
+      },
+      "expected": {
+        "status": "offline",
+        "textIncludes": [
+          "Offline / local readiness: Unavailable."
+        ]
+      }
+    }
+  ]
+}
