@@ -284,4 +284,32 @@ describe('Home preflight routed view integration', () => {
     expect(page.text()).toContain('Account context changed')
     expect(properties.readForIntent).toHaveBeenCalledTimes(1)
   })
+
+  it('announces one accessible preflight summary whose text changes on the account-clear path (HSA-02.3, HSA-08.1)', async () => {
+    const project = await seed('Summary project')
+    const properties: PropertyFactSet = {
+      state: 'available',
+      contexts: [{ reference: 'PROP-A', name: 'Property A', kind: 'real', state: 'ready', detail: 'Ready fixture.' }],
+      detail: 'Current property facts.',
+    }
+    const page = await mountAt(project, adapterSet({ properties, capabilities: capabilityFacts({ cameraPermission: fact('unknown', 'Not requested.') }) }))
+    const region = page.get('.preflight-summary')
+    expect(region.attributes('role')).toBe('status')
+    expect(region.attributes('aria-live')).toBe('polite')
+    expect(region.attributes('data-status')).toBe('unsupported')
+    const before = region.text()
+    expect(before).toContain('Capture is not supported in this runtime.')
+    expect(before).toContain('Capture: Unavailable.')
+    expect(before).toContain('Real actions stay disabled.')
+    expect(before).not.toContain('USER-A')
+
+    const clear = page.findAll('button').find(item => item.text().includes('Clear external context presentation'))!
+    await clear.trigger('click')
+    await waitForRendered(() => page.get('.preflight-summary').attributes('data-status') === 'conflict', 'Summary should report the account change')
+    const after = page.get('.preflight-summary').text()
+    expect(after).not.toBe(before)
+    expect(after).toContain('The account changed.')
+    expect(after).toContain('Central identity: Unavailable.')
+    expect(page.findAll('[role="status"][aria-live="polite"]')).toHaveLength(1)
+  })
 })

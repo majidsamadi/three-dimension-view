@@ -13,6 +13,7 @@ import {
   type HomePreflightSnapshot,
   type LocalProjectContext,
 } from '@/home/preflight'
+import { HOME_PREFLIGHT_STATUS_LABELS, describeHomePreflight } from '@/home/preflight-presentation'
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
@@ -21,6 +22,8 @@ const controller = shallowRef<HomePreflightController>()
 const snapshot = shallowRef<HomePreflightSnapshot>()
 const loading = ref(true)
 const error = ref('')
+const accountChanged = ref(false)
+let accountClears = 0
 let viewEpoch = 0
 
 const selectedProperty = computed(() => {
@@ -28,6 +31,8 @@ const selectedProperty = computed(() => {
   if (!current?.selectedPropertyRef) return undefined
   return current.propertyFacts.contexts.find(context => context.reference === current.selectedPropertyRef)
 })
+// Single summary state with a text alternative (HSA-02.3, HSA-08.1). Never "ready": capture is unqualified (Q04).
+const presentation = computed(() => snapshot.value ? describeHomePreflight(snapshot.value, undefined, { accountChanged: accountChanged.value }) : undefined)
 const capabilityRows = computed(() => {
   const facts = snapshot.value?.capabilities
   if (!facts) return []
@@ -58,8 +63,13 @@ async function refreshFacts(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
+    const clearsAtStart = accountClears
     const next = await current.refresh()
-    if (request === viewEpoch && controller.value === current) setSnapshot(next)
+    if (request === viewEpoch && controller.value === current) {
+      // A completed re-read replaces facts cleared before it started; a clear during the read still wins.
+      if (clearsAtStart === accountClears) accountChanged.value = false
+      setSnapshot(next)
+    }
   } catch (e) {
     if (request === viewEpoch && controller.value === current) error.value = errorMessage(e)
   } finally {
@@ -75,6 +85,8 @@ function chooseProperty(event: Event): void {
 
 function clearExternalContext(): void {
   if (!controller.value) return
+  accountClears++
+  accountChanged.value = true
   setSnapshot(controller.value.invalidateAccountContext())
 }
 
@@ -84,6 +96,7 @@ async function loadProject(id: string): Promise<void> {
   error.value = ''
   controller.value = undefined
   snapshot.value = undefined
+  accountChanged.value = false
   try {
     const project = await repository.get(id)
     if (request !== viewEpoch) return
@@ -113,6 +126,11 @@ onBeforeUnmount(() => { viewEpoch++ })
     <p v-if="loading" class="loading-state" role="status">Reading local project and available preflight facts…</p>
 
     <template v-if="snapshot">
+      <section v-if="presentation" class="card detail-card preflight-summary" role="status" aria-live="polite" aria-labelledby="preflight-summary-heading" :data-status="presentation.status">
+        <div class="section-heading"><div><span class="eyebrow">PREFLIGHT SUMMARY</span><h2 id="preflight-summary-heading">{{ presentation.headline }}</h2></div><span class="status-badge review">{{ HOME_PREFLIGHT_STATUS_LABELS[presentation.status] }}</span></div>
+        <p class="preflight-text-alternative">{{ presentation.textAlternative }}</p>
+      </section>
+
       <section class="card detail-card">
         <div class="section-heading"><div><span class="eyebrow">LEGACY LOCAL PROJECT</span><h2>{{ snapshot.localProject.name }}</h2></div><span class="status-badge review">Unmatched local project</span></div>
         <div class="stat-pair"><span>Local project ID</span><strong>{{ snapshot.localProject.id }}</strong></div>
