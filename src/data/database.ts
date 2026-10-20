@@ -2,18 +2,28 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import { AppError, type AssetRecord, type Project, type Settings, DEFAULT_SETTINGS, LIMITS } from '@/domain/types'
 import { validateProject } from '@/domain/validation'
 
+import type { PendingServiceUpload } from '@/service/pending-upload-store'
+
 interface WorkspaceDB extends DBSchema {
   projects: { key: string; value: Project }
   assets: { key: string; value: AssetRecord; indexes: { 'by-project': string } }
   settings: { key: string; value: Settings }
+  /** Version 2, additive (HSA-05.2): one resumable service upload per local project. */
+  'pending-service-uploads': { key: string; value: PendingServiceUpload }
 }
+export const WORKSPACE_DB_NAME = 'wisestay-three-dimension-view'
+export const WORKSPACE_DB_VERSION = 2
 let database: Promise<IDBPDatabase<WorkspaceDB>> | undefined
 export function db(): Promise<IDBPDatabase<WorkspaceDB>> {
-  if (!database) database = openDB<WorkspaceDB>('wisestay-three-dimension-view', 1, {
-    upgrade(database) {
-      database.createObjectStore('projects', { keyPath: 'id' })
-      database.createObjectStore('assets', { keyPath: 'id' }).createIndex('by-project', 'projectId')
-      database.createObjectStore('settings')
+  if (!database) database = openDB<WorkspaceDB>(WORKSPACE_DB_NAME, WORKSPACE_DB_VERSION, {
+    upgrade(database, oldVersion) {
+      // Version 1 stores are created once and never dropped, renamed or rewritten.
+      if (oldVersion < 1) {
+        database.createObjectStore('projects', { keyPath: 'id' })
+        database.createObjectStore('assets', { keyPath: 'id' }).createIndex('by-project', 'projectId')
+        database.createObjectStore('settings')
+      }
+      if (oldVersion < 2) database.createObjectStore('pending-service-uploads', { keyPath: 'projectId' })
     },
     blocked() { window.dispatchEvent(new CustomEvent('workspace-storage-blocked')) },
     blocking() { database?.then(connection => connection.close()); database = undefined },
