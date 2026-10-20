@@ -1,24 +1,24 @@
 {
   "schema_version": "1.0",
   "canonical_repository": "majidsamadi/wisestay-user-management-backend",
-  "canonical_branch": "feature/account-centre-safe-return-context",
-  "canonical_commit": "553ac3c08973114f26271d1a751437d9203b5cd4",
-  "canonical_tree": "c032cf7ed87eb5168272e2e9a5eab612803da146",
+  "canonical_branch": "feature/3d-wave3",
+  "canonical_commit": "5b085956d3435145fe80922a53d4d304aa19f97f",
+  "canonical_tree": "505755337e039cfdb42a351e201173dead7b1c97",
   "files": {
     "web-session.mjs": {
       "canonical_path": "clients/web-session/web-session.mjs",
-      "git_blob": "625a036934bc3c9b2ad788c9811e1ec8be42b76f",
-      "sha256": "8c83b03365b1a3eac5259d9c32ccc52c703fe6832c3dcbbe010ec05e02ca6b91"
+      "git_blob": "dba86fcc8b447a5b7b786af8b1645d11fb7e3bb6",
+      "sha256": "153b77584d8d10606ba183c64bb780770a0e256a85a6546343f6b08a2c975bac"
     },
     "web-session.d.mts": {
       "canonical_path": "clients/web-session/web-session.d.mts",
-      "git_blob": "02e5b0967d436cb73737c29030702bc5c790c187",
-      "sha256": "14a50fafea96514452d31066e6c47eecbe79cf9d9858905f87570280d6497dd9"
+      "git_blob": "7f348e9466e00a13848a39c23c812e9050c4ad24",
+      "sha256": "9b70034885b0fc8c93699b26eb53a2cea68ecf622b313c0acd2e1c3e7027b9d3"
     }
   },
   "consumer": "three-dimension-view Home preflight optional identity adapter",
-  "runtime_binding": "not_configured",
-  "registration": "not_selected",
-  "currentness": "WebSession.isCurrent(receipt) is process-local receipt freshness only; not resource/action authority.",
-  "note": "Vendored byte-for-byte. This manifest does not register Home Scanner, select an origin, or grant property/action authority."
+  "runtime_binding": "same_origin_bff",
+  "registration": "registered",
+  "currentness": "The canonical client at this commit has no isCurrent(); Home's adapter checks receipt === session.receipt && session.authenticated locally. Process-local receipt freshness only; not resource/action authority.",
+  "note": "Vendored byte-for-byte from the IDM int commit (wave 3). The canonical client lists home-scanner at https://home-scanner.wizestay.com, limited to the home-scanner API. Registration grants no property or action authority; the backend verifies the forwarded central token."
 }

@@ -3,7 +3,8 @@ import { repository } from '@/data/database'
 import { cropGeometry, decodeGeometry, geometryBounds, transformGeometry } from '@/domain/geometry'
 import type { RenderScene } from '@/domain/types'
 import { sha256Hex } from './digest'
-import { HttpHomeScannerApi, createDisconnectedTransport } from './home-scanner-http'
+import { APPLICATIONS, WebSession } from '@/vendor/account-centre/web-session.mjs'
+import { BFF_APP, HttpHomeScannerApi, createDisconnectedTransport, createPresignedPut, createWebSessionTransport, type SessionLike } from './home-scanner-http'
 import type { AssetEnvelope, BoundsM, ContentClass, CreateCaptureRequest, HomeScannerApi, ScaleClaim, UnobservedRegion } from './home-scanner-api'
 import { idbPendingUploadStore, type PendingUploadStore } from './pending-upload-store'
 import type { LocalComponent, PutComponent, UploadSelection } from './upload-transfer'
@@ -13,10 +14,24 @@ import type { LocalComponent, PutComponent, UploadSelection } from './upload-tra
  *
  * Status: component-tested (synthetic data only). The default composition is disconnected:
  * `HttpHomeScannerApi(createDisconnectedTransport())` answers 503 to every call and the default
- * component PUT never touches the network. Review-fixture compositions use `FakeHomeScannerApi`
- * and are labelled "Prototype / synthetic / not connected".
+ * component PUT never touches the network. Live mode is selected only when the vendored
+ * web-session client registers `home-scanner` and the page runs on that exact origin
+ * (`WebSession.enabled`). The wave 3 pin registers `home-scanner`, so live mode turns on only at
+ * `https://home-scanner.wizestay.com`; any other origin (local dev, previews) stays disconnected.
+ * Review-fixture compositions use `FakeHomeScannerApi` and are labelled
+ * "Prototype / synthetic / not connected".
  */
-export type CompositionMode = 'disconnected' | 'synthetic-fixture'
+export type CompositionMode = 'disconnected' | 'synthetic-fixture' | 'live'
+
+/** Central WiseStay sign-in for live mode (user.wizestay.com through the same-origin BFF). */
+export interface ServiceAccount {
+  /** Re-reads the session; true when signed in. Session errors propagate with their code. */
+  restore(): Promise<boolean>
+  signIn(returnPath: string): Promise<void>
+  signOut(): Promise<void>
+  /** Called when the service or BFF answers 401. Returns an unsubscribe function. */
+  onSignedOut(listener: () => void): () => void
+}
 
 export interface ServiceProject { id: string; name: string; sceneCount: number; photoCount: number }
 export interface PreparedUpload { components: LocalComponent[]; bounds_m: BoundsM; scale_claim: ScaleClaim; unobserved_regions: UnobservedRegion[] }
@@ -29,6 +44,8 @@ export interface ServiceUploadComposition {
   putComponent: PutComponent
   /** Canonical property contexts supplied by the property service. Empty when not connected. */
   properties: PropertyChoice[]
+  /** Present only in live mode. */
+  account?: ServiceAccount
   fixtureProjectId?: string
   readProject(projectId: string): Promise<ServiceProject | undefined>
   /** Builds the processed GLB and its descriptor on this device. Raw capture is never read. */
@@ -38,6 +55,8 @@ export interface ServiceUploadComposition {
 export interface ServicePublishComposition {
   mode: CompositionMode
   api: HomeScannerApi
+  /** Present only in live mode. */
+  account?: ServiceAccount
   fixtureSceneId?: string
 }
 
@@ -68,22 +87,70 @@ async function prepareLocalProject(projectId: string): Promise<PreparedUpload> {
   return { components: [await descriptorFor('main', bytes)], bounds_m: { min, max }, scale_claim: 'unknown', unobserved_regions: [] }
 }
 
-export function createDefaultUploadComposition(): ServiceUploadComposition {
+interface WebSessionModule {
+  APPLICATIONS: Readonly<Record<string, string>>
+  WebSession: new (options: { application: string }) => SessionLike
+}
+
+/**
+ * The live session, or undefined. Requires the vendored client to register `home-scanner` (it
+ * throws for unregistered applications) and `enabled`, which is true only on the exact origin.
+ */
+export function selectLiveSession(module: WebSessionModule = { APPLICATIONS, WebSession }): SessionLike | undefined {
+  if (!Object.hasOwn(module.APPLICATIONS, BFF_APP)) return undefined
+  const session = new module.WebSession({ application: BFF_APP })
+  return session.enabled ? session : undefined
+}
+
+function liveAccount(session: SessionLike): { account: ServiceAccount; signedOut: () => void } {
+  const listeners = new Set<() => void>()
+  return {
+    signedOut: () => { for (const listener of [...listeners]) listener() },
+    account: {
+      async restore() { await session.restore(true); return session.authenticated },
+      signIn: returnPath => session.start(returnPath),
+      signOut: () => session.logout(),
+      onSignedOut(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
+    },
+  }
+}
+
+async function readLocalProject(projectId: string): Promise<ServiceProject | undefined> {
+  const project = await repository.get(projectId)
+  return project ? { id: project.id, name: project.name, sceneCount: project.scenes.length, photoCount: project.photos.length } : undefined
+}
+
+export function createDefaultUploadComposition(session: SessionLike | undefined = selectLiveSession()): ServiceUploadComposition {
+  if (session) {
+    const { account, signedOut } = liveAccount(session)
+    // No property listing exists on this path yet: properties stay empty (Q14).
+    return {
+      mode: 'live',
+      api: new HttpHomeScannerApi(createWebSessionTransport(session, signedOut)),
+      store: idbPendingUploadStore,
+      putComponent: createPresignedPut(),
+      properties: [],
+      account,
+      readProject: readLocalProject,
+      prepare: prepareLocalProject,
+    }
+  }
   return {
     mode: 'disconnected',
     api: new HttpHomeScannerApi(createDisconnectedTransport()),
     store: idbPendingUploadStore,
     putComponent: disconnectedPut,
     properties: [],
-    async readProject(projectId) {
-      const project = await repository.get(projectId)
-      return project ? { id: project.id, name: project.name, sceneCount: project.scenes.length, photoCount: project.photos.length } : undefined
-    },
+    readProject: readLocalProject,
     prepare: prepareLocalProject,
   }
 }
 
-export function createDefaultPublishComposition(): ServicePublishComposition {
+export function createDefaultPublishComposition(session: SessionLike | undefined = selectLiveSession()): ServicePublishComposition {
+  if (session) {
+    const { account, signedOut } = liveAccount(session)
+    return { mode: 'live', api: new HttpHomeScannerApi(createWebSessionTransport(session, signedOut)), account }
+  }
   return { mode: 'disconnected', api: new HttpHomeScannerApi(createDisconnectedTransport()) }
 }
 

@@ -45,7 +45,7 @@ npm run test:e2e
 npm run preview
 ```
 
-`dist/` is a static SPA. No Node reconstruction server, SSR runtime, API key, AWS account or login is required. When hosting below a subpath, set `APP_BASE_PATH=/chosen-path/` at build time and configure history fallback to that path’s `index.html`. See [deployment](docs/DEPLOYMENT.md). No deployment is performed by CI.
+`dist/` is a static SPA. No Node reconstruction server, SSR runtime, API key, AWS account or login is required. When hosting below a subpath, set `APP_BASE_PATH=/chosen-path/` at build time and configure history fallback to that path’s `index.html`. See [deployment](docs/DEPLOYMENT.md). The only CI deployment is the guarded dev site publication described in “Wave 3 dev hosting”.
 
 ## Run on a phone
 
@@ -120,10 +120,28 @@ The [Home Scanner service integration requirements](docs/SERVICE_REQUIREMENTS_20
 
 The [shared 3D platform baseline](https://github.com/majidsamadi/three-dimension-view-arcore-backend/blob/6cbca1ccdf4a8e9845b74451448eb0dea4f1109d/docs/PLATFORM_REQUIREMENTS.md) defines scanner, object, Composer and discovery ownership. This documentation does not connect those services, replace legacy capture, convert customer files, implement WebGPU or deploy AWS resources.
 
+## Wave 3 dev hosting
+
+Status: component-tested (synthetic data only). Dev deploy pipeline configured: implemented and locally verified. It has not published yet, so nothing is live until a deploy run's receipt exists.
+
+- **Site.** `https://home-scanner.wizestay.com`, bucket `wisestay-web-home-scanner-511831442607`, CloudFront distribution and publisher role `wisestay-web-home-scanner-publisher`, all in account 511831442607. The hosting is owned by `wisestay-infrastructure` `applications/three-d-dev` (owner bootstrap); this repository owns only the site content.
+- **Build.** `npm run build` writes `dist/` plus `dist/release.json` (`{repository, origin, revision, files: {path: sha256}}`; revision is `$GITHUB_SHA` or `local`).
+- **Pipeline.** The `deploy` job in `.github/workflows/ci.yml` runs only on a push to `main` (or `workflow_dispatch` with `deploy: true` on `main`), after `source` and `web` pass. It uses GitHub OIDC only, with `allowed-account-ids: '511831442607'`. Before publishing it checks the caller account and the publisher-role session. Then `deployment/publish.py`:
+  - checks `deployment/activation.json` (otherwise `held`) and that this run is the current main
+  - reads the bucket and distribution from SSM `/wisestay/dev/websites/home-scanner/publication` and checks the distribution alias and S3 origin
+  - re-hashes `dist/` against `release.json`
+  - syncs assets (never deletes), then uploads the entry files with `no-store`
+  - invalidates `/*`
+  - smoke: live `release.json` revision, the `index.html` hash, a JSON 200 from `/api/v1/web-session/home-scanner/readiness` (not the SPA page) and 403/404 for `/assets/missing.js`
+  - writes `dist/deployment-receipt.json`, uploaded as artifact `deployment-receipt-<sha>` (30 days)
+- **API and sign-in.** No API URL is baked into the build. Service mode calls only the same-origin route `/api/v1/web-session/home-scanner/api/home-scanner<path>`. CloudFront forwards it to the User Management session service, which adds the user's central `user.wizestay.com` token and forwards to `https://home-scanner.dev.wizestay.com/api/v1`. Live mode, with “Sign in with WiseStay” and “Sign out”, turns on only when the vendored web-session client registers `home-scanner` and the page runs on that exact origin. The wave 3 pin (`5b08595`) registers it, so live mode is reachable only at `https://home-scanner.wizestay.com`; local and preview origins stay “Not connected”.
+- **Property (Q14).** No property service is connected. In live mode the upload view says “Property service not connected (Q14)” and uploads stay blocked.
+- **Rollback.** Revert the merge on `main`; the next main run republishes the previous build. Old hashed assets are never deleted.
+
 ## R0 foundation drafts (component-tested at most)
 
 [Legacy preservation register](docs/LEGACY_PRESERVATION_REGISTER.md) (HSA-01.1, HSA-01.3) and [pending owner decisions](docs/DECISIONS_PENDING.md) are drafts for owner review. The Home preflight route now shows one accessible summary state (`src/home/preflight-presentation.ts`); real actions stay disabled.
 
 ### Vendored code
 
-`src/vendor/account-centre/web-session.mjs` and `.d.mts` are byte-for-byte copies of `majidsamadi/wisestay-user-management-backend` `clients/web-session/` pinned in `src/vendor/account-centre/shared-auth-source.json` (commit `553ac3c0…`, branch `feature/account-centre-safe-return-context`). `tests/scripts/shared-auth-source.test.mjs` and `tests/scripts/web-session-upstream.test.mjs` check the local bytes offline. To verify the pin against upstream, run `node scripts/check-web-session-upstream.mjs` with an authenticated `gh` CLI (exit 0 pin matches, 1 mismatch, 2 `gh` unavailable). It is not run in CI because the upstream repository is private. Finding (20 Oct 2026): the pin sits on an unmerged upstream feature branch, 2 commits ahead of upstream `main`, and upstream `main` has different bytes. The vendored bytes are deliberately unchanged.
+`src/vendor/account-centre/web-session.mjs` and `.d.mts` are byte-for-byte copies of `majidsamadi/wisestay-user-management-backend` `clients/web-session/` pinned in `src/vendor/account-centre/shared-auth-source.json` (commit `5b085956…`, branch `feature/3d-wave3`, the IDM wave 3 commit that registers the four 3D apps). `tests/scripts/shared-auth-source.test.mjs` and `tests/scripts/web-session-upstream.test.mjs` check the local bytes offline. To verify the pin against upstream, run `node scripts/check-web-session-upstream.mjs` with an authenticated `gh` CLI (exit 0 pin matches, 1 mismatch, 2 `gh` unavailable). It is not run in CI because the upstream repository is private. Wave 3 (20 Oct 2026): re-vendored from IDM `main` plus the 3D registration. The earlier pin `553ac3c` (unmerged `feature/account-centre-safe-return-context`) had `WebSession.isCurrent()`; this pin does not, so `src/home/canonical-identity-adapter.ts` keeps the same exact-receipt check locally (`isCurrentReceipt`). Until the IDM branch merges, `check-web-session-upstream.mjs` reports the pin as not yet on upstream `main`.

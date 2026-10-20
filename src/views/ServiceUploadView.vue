@@ -3,6 +3,8 @@ import { computed, inject, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NoticeBox from '@/components/NoticeBox.vue'
 import PageHeading from '@/components/PageHeading.vue'
+import ServiceAccountPanel from '@/components/ServiceAccountPanel.vue'
+import { useServiceAccount } from '@/composables/useServiceAccount'
 import { errorMessage } from '@/domain/validation'
 import {
   SERVICE_UPLOAD_COMPOSITION,
@@ -16,7 +18,8 @@ import { describeUploadDisclosure } from '@/service/upload-disclosure'
 import { describeUploadView } from '@/service/service-status'
 import { UploadTransferController, type UploadTransferSnapshot } from '@/service/upload-transfer'
 
-// HSA-05.1/05.2/05.4 service upload. Default composition is disconnected (503, no network).
+// HSA-05.1/05.2/05.4 service upload. Default composition is disconnected (503, no network);
+// live mode (WebSession on the registered origin) adds WiseStay sign-in.
 const props = defineProps<{ fixture?: () => Promise<ServiceUploadComposition> }>()
 const route = useRoute()
 const injected = inject(SERVICE_UPLOAD_COMPOSITION, null)
@@ -29,12 +32,14 @@ const localError = ref('')
 const consent = ref(false)
 const propertyRef = ref('')
 const contentClass = ref<ContentClass>('synthetic')
+const account = useServiceAccount(message => { localError.value = message })
 let controller: UploadTransferController | undefined
 let unsubscribe: (() => void) | undefined
 let epoch = 0
 
 const projectId = computed(() => String(route.params.projectId || composition.value?.fixtureProjectId || ''))
 const fixtureMode = computed(() => composition.value?.mode === 'synthetic-fixture')
+const liveMode = computed(() => composition.value?.mode === 'live')
 const disclosure = computed(() => project.value ? describeUploadDisclosure(project.value) : undefined)
 const summary = computed(() => describeUploadView({ loading: loading.value, project: project.value, transfer: transfer.value }))
 const property = computed(() => composition.value?.properties.find(item => item.reference === propertyRef.value))
@@ -45,7 +50,8 @@ const startBlocked = computed(() => {
   if (!project.value) return 'The local project is not on this device.'
   if (transfer.value.state !== 'selecting') return 'An upload already exists for this project.'
   if (!project.value.sceneCount) return 'There is no scanned section to upload.'
-  if (!composition.value?.properties.length) return 'No canonical property is available: the property service is not connected in this build.'
+  if (liveMode.value && account.state.value !== 'signed-in') return 'Sign in with WiseStay first.'
+  if (!composition.value?.properties.length) return liveMode.value ? 'Property service not connected (Q14): no canonical property can be listed yet.' : 'No canonical property is available: the property service is not connected in this build.'
   if (!property.value) return 'Choose the canonical property this model belongs to.'
   if (property.value.propertyType === 'REAL') return 'Real properties need a permission record, which this slice does not collect.'
   if (!consent.value) return 'Confirm that the processed model may leave this device.'
@@ -82,6 +88,8 @@ async function load(): Promise<void> {
     if (request !== epoch) return
     composition.value = next
     propertyRef.value = next.properties.length === 1 ? next.properties[0].reference : ''
+    await account.attach(next.account)
+    if (request !== epoch) return
     const found = await next.readProject(projectId.value)
     if (request !== epoch) return
     project.value = found
@@ -134,16 +142,21 @@ async function resume(): Promise<void> {
 
 function pause(): void { if (!pauseBlocked.value) controller?.pause() }
 async function cancel(): Promise<void> { if (!cancelBlocked.value) await controller?.cancel() }
+function signIn(): void { void account.signIn(route.fullPath) }
+function signOut(): void { void account.signOut() }
 
 watch(() => route.params.projectId, () => { void load() }, { immediate: true })
-onBeforeUnmount(() => { epoch++; unsubscribe?.() })
+onBeforeUnmount(() => { epoch++; unsubscribe?.(); account.dispose() })
 </script>
 
 <template>
   <div class="container narrow">
     <PageHeading :back="headerBack" eyebrow="SERVICE MODE · UPLOAD" title="Upload a processed model." subtitle="Only a processed 3D model and its description leave this device, and only after you confirm."/>
     <NoticeBox v-if="fixtureMode" kind="warning"><strong>Prototype / synthetic / not connected.</strong> This review fixture uses an in-memory synthetic service. Nothing leaves the browser.</NoticeBox>
+    <NoticeBox v-else-if="liveMode" kind="info"><strong>Home Scanner development service.</strong> Requests go through your WiseStay session. Use synthetic content only.</NoticeBox>
     <NoticeBox v-else kind="info"><strong>Not connected.</strong> The Home Scanner service connection is not wired in this build. Every request answers “not connected” and nothing leaves this device.</NoticeBox>
+    <ServiceAccountPanel :state="account.state.value" :busy="account.busy.value" @sign-in="signIn" @sign-out="signOut"/>
+    <NoticeBox v-if="liveMode && !composition?.properties.length" kind="warning"><strong>Property service not connected (Q14).</strong> Uploads need a canonical property, and none can be listed yet.</NoticeBox>
 
     <section class="card detail-card service-status" :data-status="summary.status" aria-labelledby="service-upload-status-heading">
       <span id="service-upload-status-heading" class="eyebrow">UPLOAD STATUS</span>

@@ -9,6 +9,7 @@ import {
 import {
   createCanonicalHomeIdentityAdapter,
   createCanonicalHomePreflightAdapters,
+  isCurrentReceipt,
 } from '@/home/canonical-identity-adapter'
 import {
   HomePreflightController,
@@ -196,15 +197,15 @@ describe('canonical Account Centre Home identity adapter', () => {
 
     const first = await fixture.session.restore()
     if (!first) throw new Error('Expected first canonical receipt.')
-    expect(fixture.session.isCurrent(first)).toBe(true)
+    expect(isCurrentReceipt(fixture.session, first)).toBe(true)
 
     fixture.session.clear()
     const second = await fixture.session.restore()
     if (!second) throw new Error('Expected replacement canonical receipt.')
     expect(second.user_id).toBe(first.user_id)
     expect(second).not.toBe(first)
-    expect(fixture.session.isCurrent(first)).toBe(false)
-    expect(fixture.session.isCurrent(second)).toBe(true)
+    expect(isCurrentReceipt(fixture.session, first)).toBe(false)
+    expect(isCurrentReceipt(fixture.session, second)).toBe(true)
 
     const staleRestore = vi.spyOn(fixture.session, 'restore').mockResolvedValueOnce(first)
     const stale = await createCanonicalHomeIdentityAdapter(fixture.session).readCurrent()
@@ -244,8 +245,8 @@ describe('canonical Account Centre Home identity adapter', () => {
     if (!replacement) throw new Error('Expected replacement canonical receipt.')
     expect(replacement.user_id).toBe(firstReceipt.user_id)
     expect(replacement).not.toBe(firstReceipt)
-    expect(fixture.session.isCurrent(firstReceipt)).toBe(false)
-    expect(fixture.session.isCurrent(replacement)).toBe(true)
+    expect(isCurrentReceipt(fixture.session, firstReceipt)).toBe(false)
+    expect(isCurrentReceipt(fixture.session, replacement)).toBe(true)
 
     controller.invalidateAccountContext('Canonical receipt was replaced.')
     const staleRestore = vi.spyOn(fixture.session, 'restore').mockResolvedValueOnce(firstReceipt)

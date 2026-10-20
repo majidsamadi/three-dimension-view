@@ -1,0 +1,5 @@
+# Test-only dependency of deployment/test_workflow.py (YAML parse of .github/workflows/ci.yml).
+# Installed by the CI web job into a throwaway venv (ubuntu-24.04 system CPython 3.12, x86_64)
+# with --require-hashes. Never part of the site build.
+pyyaml==6.0.3 \
+    --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc
