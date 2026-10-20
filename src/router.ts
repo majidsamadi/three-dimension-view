@@ -8,6 +8,7 @@ export const router = createRouter({
  { path:'/new', component: () => import('./views/NewProjectView.vue'), meta: { title:'New space' } },
  { path:'/import', component: () => import('./views/ImportView.vue'), meta: { title:'Restore a project' } },
  { path:'/projects/:id', component: () => import('./views/ProjectView.vue'), meta: { title:'Space overview' } },
+ { path:'/projects/:id/preflight', component: () => import('./views/HomePreflightView.vue'), meta: { title:'Home entry preflight' } },
  { path:'/projects/:id/scan', component: () => import('./views/ScanView.vue'), meta: { title:'Capture', immersive:true } },
  { path:'/projects/:id/view', component: () => import('./views/ViewerView.vue'), meta: { title:'3D viewer', immersive:true } },
  { path:'/projects/:id/edit', component: () => import('./views/EditorView.vue'), meta: { title:'Edit space', immersive:true } },
